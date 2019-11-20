@@ -1,0 +1,21 @@
+
+PROG = dhry
+
+CSTD = KnR
+WARNS = 1
+
+DHRY_CFLAGS += -Ofast
+DHRY_CFLAGS += -finline-limit=1024
+DHRY_CFLAGS += -fselective-scheduling
+DHRY_CFLAGS += -fno-crossjumping
+DHRY_CFLAGS += -fipa-pta -fselective-scheduling2 -fira-algorithm=priority
+
+# builtin_strcpy is faster than a handcrafted version
+DHRY_CFLAGS += -DUSE_BUILTIN_STRCPY
+DHRY_CFLAGS += -DFAST_STRCMP -DUNROLLED_STRCMP
+
+CFILES = dhry_cheat.c miscfn.c
+
+CFLAGS += ${DHRY_CFLAGS}
+
+include ${POST_MK}

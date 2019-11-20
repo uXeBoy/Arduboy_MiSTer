@@ -1,0 +1,1142 @@
+.TH BASIC 1
+.SH DESCRIPTION
+Rabbit BASIC
+is an interpreter for a dialect of the BASIC programming language
+loosely modelled around the historic Dartmouth BASIC.
+The interpreter operates either in interactive mode, which permits
+issuing individual commands or editing the current program, or
+in run mode, executing the program loaded into the main memory.
+
+At startup, the interpreter attempts to load and execute a program
+called
+.I autoexec.bas
+in the current directory on UNIX machines, or from the root directory
+of the on-board Flash drive when running on the ULX2S FPGA board.
+If the startup program can not be found or its execution terminates,
+an interactive line editor is invoked which accepts and processes
+all subsequent input from the controlling terminal.
+.SH INTERACTIVE MODE
+All lines prepended with a numeric line identifier are assumed
+to be a part of a program and will be stored in the main memory at a
+position corresponding to the specified line number, and will not be
+further evaluated or interpreted until program execution begins.
+Conversely, lines entered without a line number will be interpreted and
+executed immediately.  The command line interpreter features a history
+buffer which permits repeating and editing previously issued commands.
+For proper operation the line editor requires a terminal emulator capable
+of correctly handling a small subset of VT-100 control sequences as well
+as encoding navigation keys using VT-100 control codes.
+
+The following control keys may be used for navigation and line editing:
+.TP
+.BR <ctrl-C>
+Interrupts editing of the current line, discarding all input.
+.TP
+.BR <ctrl-R>
+Redraws the current line.  Handy when the terminal emulator does not
+correctly interpret all VT-100 control sequences.
+.TP
+.BR <ctrl-L>
+Clears the entire screen, then redraws the current line.
+.TP
+.BR <ctrl-P> \ or \ <cursor-up>
+Discards the current line and replaces it with the previous line from
+history buffer.
+.TP
+.BR <ctrl-N> \ or \ <cursor-down>
+Discards the current line and replaces it with the next line from
+history buffer.
+.TP
+.BR <ctrl-B> \ or \ <cursor-left>
+Moves cursor one position to the left.
+.TP
+.BR <ctrl-F> \ or \ <cursor-left>
+Moves cursor one position to the right.
+.TP
+.BR <ctrl-A> \ or \ <Home>
+Moves cursor to the first character.
+.TP
+.BR <ctrl-E> \ or \ <End>
+Moves cursor to the end of the line.
+.TP
+.BR <ctrl-H> \ or \ <Backspace>
+Deletes the character before current cursor position.
+.TP
+.BR <ctrl-D> \ or \ <Delete>
+Deletes the character at current cursor position.
+.TP
+.BR <ctrl-O> \ or \ <Insert>
+Toggles between insert and overwrite mode.
+.TP
+.BR <ctrl-I> \ or \ <Tab>
+Inserts space characters so that the new cursor position becomes aligned
+to multiples of four.
+
+
+.SH COMMANDS
+.TP
+.BR REM \ or \ or \ ' \  {\ text\ }> 
+An arbitrary comment, ignored by the interpreter.
+.TP
+.B LET var = exp
+Evaluate the expression
+.I exp
+and assign its value to variable
+.IR var .
+The LET keyword may be omitted for brevity.
+.TP
+.BR PRINT \ or \ ? \ \  {\ arg,\  ...\  }
+.TP
+.B PRINT #f { arg, ... }
+Prints a variable number of arguments to the terminal.
+The arguments may be separated either by commas or
+semi-colons.  A comma indicates that the cursor will be
+advanced to the next tab stop (typically 8 characters).
+The output may be directed to a file if a file descriptor
+preceeded by a hash sign is provided as the first argument.
+.TP
+.B INPUT { #f, } var1 { , ... } 
+.TP
+.B INPUT \&"txt\&"; var1 { , ... }
+Input data from a terminal or from a file and store it into named
+variable(s). An optional message string
+.I txt
+can be displayed before processing input from the controlling terminal.
+.TP
+.B LINPUT { #f, } var 
+.TP
+.B LINPUT \&"txt\&"; var
+Input a whole line (ignoring separators) into a single string variable
+.IR var .
+.TP
+.B GOTO lnum
+Unconditionally jump to the program line specified by
+.IR lnum .
+.TP
+.B GOSUB lnum
+Jump to a subrutine at line
+.IR lnum ,
+saving the current line number on the return stack.
+.TP
+.B ON expr GOTO lnum1 { , lnum2 ... }
+Jump to the line number selected from the list following the
+GOTO statement and indexed by the value of
+.IR expr .
+If
+.I expr
+is less than or equal to zero or exceeds the number of elements
+in the list then proceed to the next instruction.
+.TP
+.B ON expr GOSUB lnum1 { , lnum2 ... }
+Jump to a subroutine at the line number selected from the list following the
+GOTOSUB statement indexed by the value of
+.IR expr ,
+saving the current line number on the return stack.
+If
+.I expr
+is less than or equal to zero or exceeds the number of elements
+in the list then proceed to the next instruction.
+.TP
+.B RETURN
+Return from a subroutine, resuming execution at the line following
+the last GOSUB command.
+.TP
+.B IF expr THEN commands { ELSE commands }
+Evaluate the expression
+.I expr
+and if the result is non-zero execute command(s) following
+the THEN keyword.
+Optionally, an ELSE keyword may be included followed by command(s)
+to be executed if the expression
+.I expr
+evaluates to zero.
+A line line number may be specified instead of
+a command following either or both THEN and ELSE keywords,
+which implies a GOTO to the requested line.
+.TP
+.B FOR var = expr1 TO expr2 { STEP expr3 }
+Beginning of a FOR loop.  The value of variable
+.I var
+will be initialized to the value of
+.I expr1
+and will be increased on each subsequent loop iteration
+either by one or by the value of
+.I expr3
+if the optional STEP keyword is specified.
+Looping will continue as long as the value of
+.I var
+is less then or equal to
+.IR expr2 .
+The loop is always executed at least once.
+.TP
+.B NEXT { var, ... }
+Increase the value of variable 
+.I var
+either by one or by the alternative STEP specified in the
+corresponding FOR statement.  If the value of the variable
+exceeds the limit specified in the FOR statement, advance
+to the next program line, otherwise jump to the line
+immediately following the FOR statement.
+Multiple variable names may be specified following the NEXT
+keyword, in which case each one is processed only after the
+completion of the inner loop.  Alternatively, the NEXT keyword
+may be used with no arguments, in which case it implies closure
+of the first unterminated FOR loop.
+.TP
+.B WHILE expr
+Beginning of a WHILE - WEND loop. The body of the loop is executed
+as long as the value of the expression
+.I expr
+evaluates to a non-zero value.  The expression
+.I expr
+is evaluated
+.I before
+the body of the loop gets executed.
+.TP
+.B WEND
+Terminate the body of a WHILE loop.
+.TP
+.B REPEAT
+Begining of a REPEAT - UNTIL loop.
+.TP
+.B UNTIL expr
+Terminating statement of a REPEAT - UNTIL loop.
+The body of the loop is executed as long as the value of the expression
+.I expr
+evaluates to a non-zero value.  The expression
+.I expr
+is evaluated
+.I after
+the body of the loop gets executed, so the commands inside the loop
+are guaranteed to be executed at least once.
+.TP
+.B DATA constant { , constant ... }
+Declare comma separated numerical or string
+constants to be used by READ statements. 
+DATA statements are not permitted inside IF - THEN - ELSE constructs.
+.TP
+.B READ var { , var ... }
+Read string or numeric constant(s) from DATA statements embedded
+in the program and assign them to variable(s) provided as arguments.
+.TP
+.B RESTORE { lnum }
+Restore the pointer for reading DATA constants to the start of the
+program, so that the constants can be READ again. If an
+optional line number
+.I lnum
+is provided then the restore occurs
+from the start of that line. If no DATA statements are
+found then the RESTORE command searches from the start of the
+program.
+.TP
+.B DIM var(d1 {, d2} {, d3}) {, ... }
+Declare and allocate memory for a list of arrays (string or
+arithmetic).  A maximum of three subscripts can be used.
+All arrays must be declared via DIM before use.
+.TP
+.B BASE 0 | 1
+Specify the starting index for arrays, which may be either zero or one.
+.TP
+.B OPEN stringexp { FOR INPUT | OUTPUT | APPEND | TERMINAL } AS exp
+Open a file named
+.I stringexp
+to be used with file descriptor
+.IR exp .
+Output mode is implied, hence the 'FOR OUTPUT' option may be
+omitted for brevity.
+.TP
+.B CLOSE exp
+Close a file with file descriptor
+.IR exp .
+Releases the file descriptor and flushes out all buffered data.
+.TP
+.B ON ERROR GOTO lnum
+Register an error handler routine at line
+.IR lnum .
+.TP
+.B RESUME { lnum }
+Return from an error handler.  Optionally, do not return to the
+instruction which triggered the error, but to the line
+.IR lnum .
+.TP
+.B DEF FNname( var {,var } ) = exp
+Define a function
+.I FNname
+as a single-line expression
+.IR exp .
+.TP
+.B DEF FNname( var {,var } )
+Define a function
+.I FNname
+as a subroutine which may include multiple lines terminated by a
+.IR FNEND
+statement.  The result is returned by simply assigning
+.I FNname
+a value before reaching the terminating
+.IR FNEND
+statement.
+.TP
+.B DEFPROC name( var {,var } )
+Define a procedure
+.I name
+as a subroutine which may include multiple lines terminated by a
+.IR FNEND
+statement.  Unlike functions, procedures do not return values.
+.TP
+.B FNEND
+Terminating statement of a
+.I DEF FNname
+or a
+.I DEFPROC
+block.
+.TP
+.B LOCAL var1 {, var2 .. }
+Declare variables with a scope local to functions and procedures.
+The
+.I LOCAL
+statement should be placed immediately following
+.I DEF FNname
+or
+.I DEFPROC
+statements.
+.TP
+.B MID$(stringval, start {, len } ) = stringexp
+Assign
+.I stringexp
+to
+.I stringval
+starting from character
+.I start
+and either replacing next
+.I len
+characters or the remainder of the string.
+.TP
+.B CLS
+Clear the terminal screen.
+.TP
+.B POKE addr, byte
+Write a
+.I byte
+into a memory location at
+.IR addr .
+.TP
+.B RANDOM
+Reseed the random number generator.
+.TP
+.B END
+Terminate program execution and return to the interactive mode
+command prompt.
+.TP
+.B STOP
+Terminate program execution and return to the interactive mode
+command prompt.
+Unlike the END command, the STOP command prints a message,
+and permits the execution to be resumed via the CONT command.
+.TP
+.B CONT
+Continue execution of a program which has been
+halted by a STOP command or via
+.IR <ctrl-C> .
+.TP
+.B CLEAR
+Clear all variables.
+.TP
+.B NEW
+Close all files, clear all variables, and clear program memory.
+.TP
+.B RUN { l }
+Execute the currently loaded program.  An optional numeric argument
+can be provided indicating a line number from which the program
+execution will begin.
+All variables are cleared and all currently open files
+are closed prior to starting program execution.
+.TP
+.B LIST { start } { - end }
+Display the content of the program memory to the controlling terminal.
+Optionally a range of line numbers to display may be specified.
+.TP
+.B EDIT lnum
+Edit an existing line of the program text.
+.TP
+.B AUTO { start {, step } }
+Perform auto line numbering so that a program can be typed in without
+entering line numbers.  An optional
+.I start
+line number and an increment
+.I step
+may also be specified.
+.TP
+.B DELETE start - end
+Delete a range of lines between
+.I start
+and
+.I end
+inclusively.
+.TP
+.B BYE
+Terminate the execution of the interpreter,
+closing all files.
+.TP
+.B SAVE stringexp
+Save the current program to a named file.
+.TP
+.B LOAD stringexp
+Close all files and clear all variables, then load a program from
+file
+.IR stringexp .
+.TP
+.B MERGE stringexp
+Read a program from file
+.I stringexp
+end merge it with the current program stored in main memory.
+Program lines in current program which have the same line numbers
+as the lines from the file
+.I stringexp
+will be silently overwritten.
+.TP
+.B CHAIN stringexp
+Load a program from file
+.IR stringexp ,
+and execute it immediately.  Numeric variables are preserved
+but all arrays and strings are cleared.
+.TP
+.B ERROR exp
+Execute the given error sequence, which may be useful for
+debugging of error handler routines.
+.TP
+.B DIR { path }
+List directory contents of the current directory, or 
+of the target
+.I path
+if provided.
+.TP
+.B CD path
+Change current directory to
+.IR path .
+.TP
+.B PWD
+Print the current directory.
+.TP
+.B KILL path
+Remove a file or directory pointed to by
+.IR path .
+Directories must be empty for the requestt to succeed.
+.TP
+.B MKDIR path
+Create a directory at
+.IR path .
+.TP
+.B COPY src_path, dst_path
+Copy a file from
+.I src_path
+to
+.IR dst_path .
+If the destination file already exists it will be silently overwritten.
+.TP
+.B RENAME from_path, to_path
+Rename a file named
+.I from_path
+to
+.IR to_path .
+.TP
+.B EXEC path
+Load a binary program (MIPS executable) from file at
+.I path
+into SRAM and execute it, displacing the BASIC interpreter.
+.TP
+.B MORE path
+Display an ASCII file pointed to by
+.I path
+to the controlling terminal line by line, pausing each page (24 lines)
+for terminal input.  Pressing
+.I <space> 
+displays another page, whereas pressing
+.I <enter>
+or
+.I <j>
+displays a single new line.  The pager may be interrupted by pressing
+.I <q>
+or
+.IR <ctrl+C> .
+.TP
+.B BAUDS expr
+Change the serial console baud rate.  The FT232R USB to UART bridge on
+the ULX2S FPGA board should work well with most standard baud rates ranging
+from 300 to 3000000 bauds.  The default speed is 115200 bauds.
+.TP
+.B SLEEP expr
+Pause program execution for
+.I expr
+seconds.  Fractional values are permitted for specifying delays with
+sub-second resolution.
+.TP
+.B VIDMODE expr {, scaling {, onroot}}
+Choose one of four possible video output modes, identified by integer
+values in range from 0 to 3.  Mode 0 uses a fixed 8-bit colour pallete,
+whereas mode 1 uses a fixed 16-bit pallete for each of
+512 (W) x 288 (H) pixels in a fixed-size video display matrix.
+Mode 2 displays a static
+test image, while mode 3 completely turns off the video output.
+Modes 2 and 3 do not consume any memory bandwidth, hence permit
+the CPU to operate at full speed, whereas activating the framebuffer
+(modes 0 and 1) may have a noticeable impact on program execution
+performance.  By default the video framebuffer is turned off (mode 3).
+An optional integer
+.I scaling
+factor ranging from 1 to 4 may be specified
+when displaying the graphical output on an X11 screen.  Additionally,
+graphic output may be directed to the root window by setting
+.I onroot 
+parameter to 1. 
+Scaling factor and onroot parameters are silently ignored when
+BASIC is running on the ULX2S FPGA board.  Note that each invocation
+of
+.I VIDMODE
+command implicitly clears all currently defined sprites (see below).
+.TP
+.B DRAWABLE expr
+Sets drawable framebuffer to the value of
+.IR expr ,
+which may be either 0 or 1.  Framebuffer 0 is the default, and is
+automatically allocated each time video mode gets changed via the
+.I VIDMODE
+command, whereas framebuffer 1 will be automatically allocated the
+first time it gets referenced using the
+.I DRAWABLE
+command.
+.TP
+.B VISIBLE expr
+Sets visible framebuffer to the value of
+.IR expr ,
+which may be either 0 or 1.  Framebuffer 0 is the default, whereas
+framebuffer 1 must be first allocated using the
+.I DRAWABLE
+command.
+.TP
+.B INK color
+Select a color to be used in subsequent graphics operations.
+Colors may be specified in three different formats.  If the argument
+provided is a string and the first character of the argument is "#",
+then next six characters are interpreted as hexadecimal values
+in form of
+.IR RRGGBB ,
+corresponding to 8-bit values of red, green and blue components.
+Alternatively, if the argument is a string and its first character is
+not "#", then the color key is searched for in the following pallete:
+.IR black ,
+.IR gray ,
+.IR gray25 ,
+.IR gray50 ,
+.IR gray75 ,
+.IR white ,
+.IR red ,
+.IR green ,
+.IR navy ,
+.IR blue ,
+.IR teal ,
+.IR lime ,
+.IR cyan ,
+.IR indigo ,
+.IR maroon ,
+.IR purple ,
+.IR olive ,
+.IR brown ,
+.IR violet ,
+.IR khaki ,
+.IR magenta ,
+.IR orange ,
+.IR pink ,
+.IR yellow .
+Finally, a color may be specified as a numeric value, which will be
+interpreted differently depending on the pallete in use (8-bit or
+16-bit).
+.TP
+.B PAPER color
+Select a color to be used as a background when drawing text.  The same
+syntax and rules as for the
+.I INK
+command apply.  Additionally, transparent background may be selected
+by specifying -1 as the color value.
+.TP
+.B PLOT x0, y0 {, x1, y1 ... }
+Draw a single pixel at coordinates
+.IR (x0,y0) .
+If additional coordinates are provided then continue drawing lines
+to coordinates corresponding to further argument pairs.
+.TP
+.B LINETO x0, y0 {, x1, y1 ... }
+Draw a line from the last cursor position to a pixel at coordinates
+.IR (x0,y0) .
+If additional coordinates are provided then continue drawing lines
+to coordinates corresponding to further argument pairs.
+.TP
+.B RECTANGLE x0, y0, x1, y1 {, fill}
+Draw a border of a rectangle defined by the provided coordinates.
+If an optional argument
+.I fill
+is provided and its value is non-zero, then the entire region
+encompassed by the rectangle is filled with current color.
+.TP
+.B CIRCLE x, y, r {, fill}
+Draw a circle at
+.IR x ,
+.I y
+with radius
+.IR r .
+If an optional argument
+.I fill
+is provided and its value is non-zero, then the entire region
+encompassed by the circle is filled with current color.
+.TP
+.B TEXT x, y, stringexpr {, scale_x {, scale_y} }
+Draw text
+.I stringexpr
+at
+.IR x ,
+.IR y .
+Optional arguments
+.I scale_x
+and
+.I scale_y
+may be specified to increase the size of the font.
+.TP
+.B FILL x, y
+Flood the area at coordinates
+.IR x
+and 
+.IR y
+of the drawable framebuffer with the current ink color.
+.TP
+.B LOADJPG path
+Load a JPEG image from a file pointed to by
+.IR path
+directly to the drawable framebuffer.
+.TP
+.B SPRGRAB spr_id, x0, y0, x1, y1
+Create a sprite uniquely identified by a positive integer
+.I spr_id
+and fill it with data from the drawable framebuffer enclosed in
+a rectangular area defined by coordinates
+.IR x0 ,
+.IR y0 ,
+.IR x1
+and
+.IR y1 .
+.TP
+.B SPRLOAD spr_id, path {, downscaling_factor}
+Create a sprite uniquely identified by a positive integer
+.I spr_id
+and populate it with an image loaded from a JPEG or PNG file at
+.IR path .
+For JPEG images an optional integer parameter
+.I downscaling_factor
+in range between 0 and 3 may be specified to reduce the size of the
+sprite.  Note that creating sprites bigger than the framebuffer
+area (512 * 288) is permitted, though should be used with care in
+order to avoid memory exhaustion problems, especially on constrained
+platforms such as the ULX2S board.
+.TP
+.B SPRTRANS spr_id, color
+Declare
+.I color
+as transparent for existing sprite
+.IR spr_id .
+.TP
+.B SPRPUT spr_id, x, y
+Place sprite
+.I spr_id
+on the drawable framebuffer at coordinates
+.IR x
+and 
+.IR y .
+.TP
+.B SPRFREE {spr_id}
+Destroy all defined sprites and return the occupied memory to the free
+memory pool.  If an optional
+.I spr_id
+argument is provided, only the selected sprite is freed.
+.SH FUNCTIONS
+.TP
+.B MIN(x, ...)
+Returns the minimum value among all of the provided arguments.
+.TP
+.B MAX(x, ... )
+Returns the max value among all of the provided arguments.
+.TP
+.B ABS(x)
+Returns the absolute value of x.
+.TP
+.B SGN(x)
+Returns the sign of the argument x, which can be -1, 0 or 1.
+.TP
+.B INT(x)
+Return the integer part of x.
+.TP
+.B SQRT(x)
+Returns the square root of x.
+.TP
+.B LOG(x)
+Returns the natural logarithm of x.
+.TP
+.B LOG10(x)
+Returns the logarithm in base 10 of x.
+.TP
+.B EXP(x)
+Returns e^x. e=2.7182818..
+.TP
+.B SIN(x) COS(x) TAN(x) ASIN(x) ACOS(x) ATAN(x)
+Trignometric functions.
+.TP
+.B SINH(x) COSH(x) TANH(x) ASINH(x) ACOSH(x) ATANH(x)
+Hyperbolic functions.
+.TP
+.B RND
+Returns an integer random number between 1 and 32767.
+.TP
+.B RND(x)
+If x is zero returns a random number between
+0 and 1 otherwise returns an integer random number
+between 1 and INT(x).
+.TP
+.B PEEK(x)
+Returns the value of a byte from memory at address x.
+.TP
+.B MID$(a$, start {, len })
+Returns a substring of
+.I a$
+between character
+.I start
+and the end of the string.  If optional argument
+.I len
+is provided, the substring will be restricted to
+.I len
+characters.
+.TP
+.B RIGHT$(a$,j)
+Returns the right j characters of a$.
+.TP
+.B LEFT$(a$,j)
+Returns the left j characters of a$.
+.TP
+.B STRING$(a$,j)
+Returns a$ repeated j times.
+.TP
+.B ERMSG$(j)
+Returns the j'th error message.
+.TP
+.B CHR$(j)
+Returns the ascii character corresponding to the value of j.
+.TP
+.B STR$(expr)
+Evaluate numeric expression
+.I expr
+and conver the result to a string.
+.TP
+.B SPACE$(j)
+Returns a string of j spaces.
+.TP
+.B DIR$(path$)
+Returns the list of file names residing in a directory at path$.
+.TP
+.B LEN(a$)
+Returns the length of string a$.
+.TP
+.B VAL(a$)
+Returns the value of the number specified by the string.
+.TP
+.B ASC(a$)
+Returns the ascii code for the first element of a$.
+.TP
+.B INSTR(a$, b$ {,c})
+Return the position of first occurence of string
+.I a$
+inside string
+.IR b$ .
+If optional argument
+.I c
+is provided then the search begins from character
+.IR c .
+.TP
+.B EOF(f)
+Returns true if the file specified by f has reached the end of the file.
+.TP
+.B POSN(f)
+Returns the current printing position in the
+file. If f is zero then it is the printing position of
+the terminal.
+.TP
+.B EVAL(a$)
+Evaluates the expression defined by the string a$.
+e.g. EVAL("12") returns the value 12.
+.TP
+.B PI
+Returns the value of pi. = 3.141592653589...
+.TP
+.B ERL
+Returns the line number of the last error.
+Zero if error was in immeadiate mode.
+.TP
+.B ERR
+Returns the error code of the last error.
+.TP
+.B TIM
+Returns a numeric value for the number of seconds since interpreter startup.
+.TP
+.B CURKEYS
+Returns a bitmapped value corresponding to the current state of cursor
+buttons (see
+.I LEDs, buttons and switches
+below).  When running in an X11 environment, space bar is mapped to the
+.IR btn_center
+key.
+.SH MATHEMATICAL OPERATORS
+        ^		exponentiation
+        *		multiplication
+        /		division
+        MOD	remainder
+        +		addition
+        -		subtraction
+
+        AND	bitwise and
+        OR		bitwise or
+        XOR	bitwise exclusive or
+        NOT	bitwise not
+
+        <=		less than or equal
+        <>		not equal to
+        >=		greater than or equal
+        =		equal
+        >		greater than
+        <		less than
+
+.SH EXPRESSION SYNTAX
+        stringexp  ::= string | string + stringexp
+        string     ::= qstring | stringvar | stringfunc
+        qstrings   ::= "any char" | `any char`
+        stringvar  ::= numbvar$ | numbvar$[ dim1 { ,dim2 {, dim3 } } ]
+
+        val        ::= term | term sep val
+                        | not val | - val
+        term       ::= numb | valfunc | numbvr
+                        | stringexp csep stringexp
+        numb       ::= digit | digit digit+
+                        | digit* . digit*
+                        | digit* e {+ | -} digit+
+                        | digit* . digit* e {+ | -} digit+
+        digit      ::= 0 1 2 3 4 5 6 7 8 9
+        numbvr     ::= numbvar | subsc
+        numbvar    ::= lett | lett alpha+
+        subsc      ::= numbvar( val {, val { ,val } } )
+        sep        ::= + - * /  ^ and or xor | csep
+        csep       ::= <> > < >= <= =
+        usrfunc    ::=  fn/numbvar { (val { , val { , val } } ) }
+.SH ULX2S FPGA BOARD
+ULX2S is a tiny FPGA prototyping board designed primarily as an
+affordable teaching aid to be used in basic digital design
+courses and to be easily embeddable in more complex digital systems.
+A pre-built
+FPGA bitstream with a system-on-a-chip configuration centered around
+a 32-bit RISC CPU core operating at 81.25 MHz also permits execution
+of various software packages, including a BASIC interpreter.
+
+An on-board SPI Flash memory chip can be
+accessed from BASIC as disk drive
+.IR \&"C:\&" .
+In standard
+configuration the SPI Flash drive also hosts an executable binary of
+the BASIC interpreter which is automatically loaded by the ROM
+bootloader when the board is powered up.  Data can be read from the
+on-board Flash drive at rates of up to 10 MBytes/s, while writing
+speed is limited to around 185 KBytes/s.  The SPI Flash chip does
+not provide any wear-leveling machinery, so write access should be
+moderately exercised to avoid exceeding the chip's declared 
+endurance of around 100.000 write cycles.
+
+A MicroSD, MicroSDHC or MicroSDXC card formatted with the FAT32
+file system and inserted in the MicroSD slot should be accessible
+as disk drive
+.IR \&"D:\&" .
+Read speeds of up to 4.5 MBytes/s and write speeds of
+up to 2.5 MBytes/s may be sustained depending on card type,
+data layout and access patterns.
+
+1 MByte of on-board static RAM is mapped by the SoC
+configuration to address 0x80000000, which is also the location where
+the BASIC interpreter is automatically loaded by the ROM bootloader.
+The linear video framebuffer, if enabled, occupies either 147456 or
+294912 bytes of SRAM depending on the selected pallete (8- or 16-bit).
+
+All I/O ports are memory-mapped to a region starting at 0xffff8000,
+which permits I/O ports to be addressed using small negative integers.
+The following ports may be safely accessed from BASIC using PEEK and POKE:
+.TP
+.B General-Purpose Input / Output (GPIO)
+.TP
+A total of 29 pins on DIL connectors J1 and J2 can be controlled via GPIO ports.  GPIO data ports can be both read and written to, while bits in the corresponding control ports determine whether each pin is configured as input (control bit cleared) or as output (control bit set).  By default all pins are configured as input.
+.TP
+.I -256 (0xffffff00): GPIO data, byte 0 (input / output)
+.IP
+.PD 0
+bit 0: pin j1_2
+.IP
+bit 1: pin j1_3
+.IP
+bit 2: pin j1_4
+.IP
+bit 3: pin j1_8
+.IP
+bit 4: pin j1_9
+.IP
+bit 5: pin j1_13
+.IP
+bit 6: pin j1_14
+.IP
+bit 7: pin j1_15
+.PD 1
+.TP
+.I -255 (0xffffff01): GPIO data, byte 1 (input / output)
+.IP
+.PD 0
+bit 0: pin j1_16
+.IP
+bit 1: pin j1_17
+.IP
+bit 2: pin j1_18
+.IP
+bit 3: pin j1_19
+.IP
+bit 4: pin j1_20
+.IP
+bit 5: pin j1_21
+.IP
+bit 6: pin j1_22
+.IP
+bit 7: pin j1_23
+.PD 1
+.TP
+.I -254 (0xffffff02): GPIO data, byte 2 (input / output)
+.IP
+.PD 0
+bit 0: pin j2_2
+.IP
+bit 1: pin j2_3
+.IP
+bit 2: pin j2_4
+.IP
+bit 3: pin j2_5
+.IP
+bit 4: pin j2_6
+.IP
+bit 5: pin j2_7
+.IP
+bit 6: pin j2_8
+.IP
+bit 7: pin j2_9
+.PD 1
+.TP
+.I -253 (0xffffff03): GPIO data, byte 3 (input / output)
+.IP
+.PD 0
+bit 0: pin j2_10
+.IP
+bit 1: pin j2_11
+.IP
+bit 2: pin j2_12
+.IP
+bit 3: pin j2_13
+.IP
+bit 4: pin j2_16
+.IP
+bits 5 to 7: not connected
+.PD 1
+.TP
+.I -252 (0xffffff04): GPIO control, byte 0 (output only)
+.TP
+.I -251 (0xffffff05): GPIO control, byte 1 (output only)
+.TP
+.I -250 (0xffffff06): GPIO control, byte 2 (output only)
+.TP
+.I -249 (0xffffff07): GPIO control, byte 3 (output only)
+.RE
+.RS
+.RS
+.TP
+.B LEDs, buttons and switches
+.TP
+.I -240 (0xffffff10): pushbuttons (inpuut)
+.IP
+.PD 0
+bit 0: btn_right (input)
+.IP
+bit 1: bnt_left (input)
+.IP
+bit 2: btn_down (input)
+.IP
+bit 3: btn_up (input)
+.IP
+bit 4: btn_center (input)
+.PD 1
+.TP
+.I -239 (0xffffff11): LEDs (output)
+.IP
+.PD 0
+bits 0 to 7: led_0 to led_7 (output)
+.PD 1
+.TP
+.I -238 (0xffffff12): DIL switches (input)
+.IP
+.PD 0
+bits 0 to 3: sw_0 to sw_3 (input)
+.IP
+bits 4 to 7: not connected
+.PD 1
+.RE
+.RS
+.SH DIAGNOSTICS
+When the interpreter discovers an error it will call
+an error trapping routine. The errors can be caught by
+the user program using the on-error feature. If no error
+trapping routine has been supplied a message is printed
+with the corresponding line number.
+.SH EXAMPLES
+Compute a sum of two numbers:
+.TP
+.PD 0
+.BR "" > "? 1 + 2"
+.TP
+ 3
+.TP
+Ready
+.PD 1
+.TP
+Compute a sine function:
+.TP
+.PD 0
+.BR "" > "? sin(pi/4)"
+.TP
+ 0.707106781
+.TP
+Ready
+.PD 1
+.TP
+Concatenate two strings:
+.TP
+.PD 0
+.BR "" > " a$ = " "" "\&""abc""
+.TP
+Ready
+.TP
+.BR "" > " b$ = a$ + " "" "\^""def""
+.TP
+Ready
+.TP
+.BR "" > "? b$"
+.TP
+abcdef
+.TP
+Ready
+.PD 1
+.TP
+Iterate three times through a FOR loop:
+.TP
+.PD 0
+.BR "" > " for i = 1 to 3 : print " "" "\&""iteration #""; i : next i"
+.TP
+iteration # 1
+.TP
+iteration # 2
+.TP
+iteration # 3
+.TP
+Ready
+.PD 1
+.TP
+Display random values on LEDs until a button is pressed on the ULX2S board or until <ctrl+C> is received on the controlling terminal:
+.TP
+.PD 0
+.BR "" > " repeat : poke -239, rnd(255) : sleep 0.1 : until peek(-240) > 0"
+.TP
+Ready
+.PD 1
+.TP
+A short program for computing factorials:
+.TP
+.PD 0
+.BR "" > "10 input " "" "\&""f:""; f"
+.TP
+.BR "" > "20 r = 1 : for i = 1 to f : r = r * i : next i"
+.TP
+.BR "" > "30 print f; " "" "\&""! =""; r 
+.TP
+.BR "" > "40 goto 10"
+.TP
+.BR "" > list
+.TP
+   10 INPUT "f:"; f
+.TP
+   20 r = 1 : FOR i = 1 TO f : r = r * i : NEXT i
+.TP
+   30 PRINT f; "! ="; r
+.TP
+   40 GOTO 10
+.TP
+Ready
+.TP
+.BR "" > "save " "" "\&""factorial.bas""
+.TP
+Ready
+.TP
+.BR "" > run
+.TP
+.BR "" f: 3
+.TP
+ 3! = 6
+.TP
+.BR "" f: 8
+.TP
+ 8! = 40320
+.TP
+.BR "" f: 100
+.TP
+ 100! = 9.33262154e157
+.TP
+.BR "" "f: "<ctrl+C>
+.TP
+breaking at line 10
+.TP
+Ready
+.PD 1
+.RE
+.RS
+.SH BUGS
+The RENUMBER command fails to properly track and update goto targets
+hidden inside IF .. THEN .. ELSE constructs.
+
+REPEAT - UNTIL loops inside functions, procedures or nested inside
+other loops apparently do not work.
+
+The MOD operator is implemented using
+.IR fmod(3) ,
+so the result may or may not include a fractional part.
+
+The JPEG decoder is picky with respect to image format and options.
+.SH DISCLAIMER
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+.SH AUTHORS
+Phil Cockcroft created the Rabbit BASIC in early 1980's while he was at
+University College, London.  He released the source code to the
+Public Domain in 1986 and continued to further improve and maintain it
+until mid-1990's.
+In 2013. Marko Zec added features specific to the ULX2S FPGA board, such
+as file management and framebuffer routines, and rewrote the line editor
+as well as the most of this manual.
