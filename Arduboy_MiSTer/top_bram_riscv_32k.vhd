@@ -112,12 +112,16 @@ begin
     )
     port map (
     clk => clk_100m,
-    sio_txd(0) => rs232_txd, sio_rxd(0) => rs232_rxd,
-    sio_break(0) => open,
-    simple_out(31 downto 18) => open, simple_out(17) => dc, simple_out(16) => clk,
-    simple_out(15 downto 8) => data, simple_out(7 downto 6) => open,
-    simple_out(5) => led, simple_out(4 downto 0) => open,
-    simple_in(31 downto 0) => buttons
+    sio_rxd(0) => rs232_rxd, -- PIN_AG11 USER_IO[0] (Arduino SCL)
+    sio_txd(0) => rs232_txd, -- PIN_AH9  USER_IO[1] (Arduino SDA)
+    sio_break(0) => open, spi_miso => "",
+    simple_in(31 downto 0) => buttons,
+    simple_out(17) => dc, simple_out(16) => clk,
+    simple_out(15 downto 8) => data,
+    simple_out(5) => led, -- PIN_Y15 LED_USER (GPIO_1[0])
+    simple_out(31 downto 18) => open,
+    simple_out(7 downto 6) => open,
+    simple_out(4 downto 0) => open
     );
 
 end Behavioral;

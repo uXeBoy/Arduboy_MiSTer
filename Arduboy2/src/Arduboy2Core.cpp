@@ -17,6 +17,7 @@ void Arduboy2Core::boot()
 // This routine must be modified if any pins are moved to a different port
 void Arduboy2Core::bootPins()
 {
+  pinMode(LED_BUILTIN, OUTPUT);
 }
 
 uint8_t Arduboy2Core::width() { return WIDTH; }
@@ -94,9 +95,28 @@ uint8_t Arduboy2Core::buttonsState()
 {
   uint8_t buttons;
 
-  buttons = ~((*simple_in >> 12) & 0xFC);
+  buttons = (*simple_in & 0x3F);
 
   return buttons;
+}
+
+/* RGB LED */
+
+void Arduboy2Core::digitalWriteRGB(uint8_t red, uint8_t green, uint8_t blue)
+{
+  // only blue on DevKit
+  (void)red;    // parameter unused
+  (void)green;  // parameter unused
+  digitalWrite(LED_BUILTIN, blue);
+}
+
+void Arduboy2Core::digitalWriteRGB(uint8_t color, uint8_t val)
+{
+  // only blue on DevKit
+  if (color == BLUE_LED)
+  {
+    digitalWrite(LED_BUILTIN, val);
+  }
 }
 
 // delay in ms with 16 bit duration

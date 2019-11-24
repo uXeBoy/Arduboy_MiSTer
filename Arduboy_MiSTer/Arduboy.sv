@@ -138,7 +138,6 @@ assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_RD, DDRAM_DIN, DDRAM_BE, DD
 assign {SDRAM_CLK, SDRAM_CKE, SDRAM_A, SDRAM_BA, SDRAM_DQ, SDRAM_DQML, SDRAM_DQMH, SDRAM_nCS, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nWE} = 'Z;
 assign {UART_RTS, UART_TXD, UART_DTR} = 0;
 assign USER_OUT[0] = 1;
-assign USER_OUT[6:2] = 5'd0;
 
 `include "build_id.v"
 localparam CONF_STR =
@@ -207,6 +206,7 @@ wire clk_100m, clk_25m, lock;
 pll_50m pll_50m
 (
     .refclk(CLK_50M),
+    .rst(RESET),
     .outclk_0(clk_100m),
     .outclk_1(clk_25m),
     .locked(lock)
