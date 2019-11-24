@@ -61,23 +61,24 @@ wire [2:0] bitPosition;
 wire [9:0] bytePosition;
 reg  [7:0] tempByte;
 assign pixelX = pixelH / 5;
-assign pixelY = pixelV / 5;
+assign pixelY = pixelV_offset / 5;
 assign pixelZ = pixelY[5:3];
 assign bitPosition = pixelY % 8;
 assign bytePosition = (pixelZ * 128) + pixelX;
-assign pixelValue = ((pixelV < 320) && (pixelH < 640) && dataEnable) ? tempByte[bitPosition] : 1'b0;
+assign pixelValue = (dataEnable) ? tempByte[bitPosition] : 1'b0;
 
 wire reset_n;
 assign reset_n = ~reset;
 
-reg [9:0] pixelH, pixelV; // estado interno de pixeles del modulo
+reg [9:0] pixelH, pixelV, pixelV_offset; // estado interno de pixeles del modulo
 
 initial begin
-  hsync      = 0;
-  vsync      = 0;
-  pixelH     = 0;
-  pixelV     = 0;
-  dataEnable = 0;
+  hsync         = 0;
+  vsync         = 0;
+  pixelH        = 0;
+  pixelV        = 0;
+  pixelV_offset = 0;
+  dataEnable    = 0;
 end
 
 // Manejo de Pixeles y Sincronizacion
@@ -88,12 +89,15 @@ always @(posedge clock or posedge reset_n) begin
     vsync  <= 0;
     pixelH <= 0;
     pixelV <= 0;
+    pixelV_offset <= 0;
   end
   else begin
     // Display Horizontal
     if(pixelH==0 && pixelV!=524) begin
       pixelH <= pixelH + 1'b1;
       pixelV <= pixelV + 1'b1;
+      if(pixelV==80) pixelV_offset <= 0;
+      else pixelV_offset <= pixelV_offset + 1'b1;
     end
     else if(pixelH==0 && pixelV==524) begin
       pixelH <= pixelH + 1'b1;
@@ -128,7 +132,7 @@ always @(posedge clock or posedge reset_n) begin
   if(reset_n) dataEnable <= 0;
 
   else begin
-    if(pixelH > 0 && pixelH <= 640 && pixelV > 0 && pixelV <= 480)
+    if(pixelH > 0 && pixelH < 640 && pixelV_offset > 0 && pixelV_offset < 320)
       dataEnable <= 1;
     else
       dataEnable <= 0;
