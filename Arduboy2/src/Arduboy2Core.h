@@ -44,6 +44,82 @@
 #define WIDTH 128 /**< The width of the display in pixels */
 #define HEIGHT 64 /**< The height of the display in pixels */
 
+#define SD_ACK_MASK    0x00000040
+#define ADDRESS_MASK   0xFF800000
+#define GLUE_WR_MASK   0x00400000
+#define FULLNOTE_MASK  0x003F0000
+#define DATA_MASK      0x0000FF00
+#define DC_MASK        0x00000080
+#define CLK_MASK       0x00000040
+#define SD_RD_MASK     0x00000010
+#define SD_WR_MASK     0x00000008
+
+#define NOTE_REST  0
+#define NOTE_A2    1
+#define NOTE_AS2   2
+#define NOTE_B2    3
+#define NOTE_C3    4
+#define NOTE_CS3   5
+#define NOTE_D3    6
+#define NOTE_DS3   7
+#define NOTE_E3    8
+#define NOTE_F3    9
+#define NOTE_FS3  10
+#define NOTE_G3   11
+#define NOTE_GS3  12
+#define NOTE_A3   13
+#define NOTE_AS3  14
+#define NOTE_B3   15
+#define NOTE_C4   16
+#define NOTE_CS4  17
+#define NOTE_D4   18
+#define NOTE_DS4  19
+#define NOTE_E4   20
+#define NOTE_F4   21
+#define NOTE_FS4  22
+#define NOTE_G4   23
+#define NOTE_GS4  24
+#define NOTE_A4   25
+#define NOTE_AS4  26
+#define NOTE_B4   27
+#define NOTE_C5   28
+#define NOTE_CS5  29
+#define NOTE_D5   30
+#define NOTE_DS5  31
+#define NOTE_E5   32
+#define NOTE_F5   33
+#define NOTE_FS5  34
+#define NOTE_G5   35
+#define NOTE_GS5  36
+#define NOTE_A5   37
+#define NOTE_AS5  38
+#define NOTE_B5   39
+#define NOTE_C6   40
+#define NOTE_CS6  41
+#define NOTE_D6   42
+#define NOTE_DS6  43
+#define NOTE_E6   44
+#define NOTE_F6   45
+#define NOTE_FS6  46
+#define NOTE_G6   47
+#define NOTE_GS6  48
+#define NOTE_A6   49
+#define NOTE_AS6  50
+#define NOTE_B6   51
+#define NOTE_C7   52
+#define NOTE_CS7  53
+#define NOTE_D7   54
+#define NOTE_DS7  55
+#define NOTE_E7   56
+#define NOTE_F7   57
+#define NOTE_FS7  58
+#define NOTE_G7   59
+#define NOTE_GS7  60
+#define NOTE_A7   61
+#define NOTE_AS7  62
+#define NOTE_B7   63
+#define TONES_END 64 // Frequency value for sequence termination. (No duration follows)
+
 /** \brief
  * Lower level functions generally dealing directly with the hardware.
  *
@@ -248,6 +324,73 @@ class Arduboy2Core
      * of Arduino `delay()` will save a few bytes of code.
      */
     void static delayShort(uint16_t ms) __attribute__ ((noinline));
+
+  /** \brief
+   * The counter used by the `timer()` function to time the duration of a tone.
+   *
+   * \details
+   * This variable is set by the `dur` parameter of the `tone()` function.
+   * It is then decremented each time the `timer()` function is called, if its
+   * value isn't 0. When `timer()` decrements it to 0, a tone that is playing
+   * will be stopped.
+   *
+   * A sketch can determine if a tone is currently playing by testing if
+   * this variable is non-zero (assuming it's a timed tone, not a continuous
+   * tone).
+   *
+   * Example:
+   * \code{.cpp}
+   * beep.tone(beep.freq(1000), 15);
+   * while (beep.duration != 0) { } // wait for the tone to stop playing
+   * \endcode
+   *
+   * It can also be manipulated directly by the sketch, although this should
+   * seldom be necessary.
+   */
+  static uint16_t duration;
+  static bool tonesPlaying;
+  static uint16_t toneSequence[];
+
+  /** \brief
+   * Play a tone for a given duration.
+   *
+   * \param count The count to be loaded into the timer/counter to play
+   *              the desired frequency.
+   * \param dur The duration of the tone, used by `timer()`.
+   *
+   * \details
+   * A tone is played for the specified duration, or until replaced by another
+   * tone or stopped using `noTone()`.
+   *
+   * The tone's frequency is determined by the specified count, which is loaded
+   * into the timer/counter that generates the tone. A desired frequency can be
+   * converted into the required count value using the `freq()` function.
+   *
+   * The duration value is the number of times the `timer()` function must be
+   * called before the tone is stopped.
+   *
+   * \see freq() timer() noTone()
+   */
+  static void tone(uint16_t freq, uint16_t dur);
+
+  static void tone(uint16_t *tones);
+
+  /** \brief
+   * Handle the duration that a tone plays for.
+   *
+   * \details
+   * This function must be called at a constant interval, which would normally
+   * be once per frame, in order to stop a tone after the desired tone duration
+   * has elapsed.
+   *
+   * If the value of the `duration` variable is not 0, it will be decremented.
+   * When the `duration` variable is decremented to 0, a playing tone will be
+   * stopped.
+   */
+  static void timer();
+
+  static uint8_t readEEPROM(uint16_t address);
+  static void writeEEPROM(uint16_t address, uint8_t value);
 
   protected:
     // internals

@@ -8,6 +8,74 @@
 
 Arduboy2Core::Arduboy2Core() { }
 
+volatile uint32_t *simple_out = (uint32_t *)0xFFFFFF10;
+volatile uint32_t *simple_in  = (uint32_t *)0xFFFFFF00;
+
+uint16_t Arduboy2Core::duration = 0;
+bool Arduboy2Core::tonesPlaying = false;
+uint16_t Arduboy2Core::toneSequence[3];
+static uint16_t *tonesStart = 0;
+static uint16_t *tonesIndex = 0;
+
+void Arduboy2Core::tone(uint16_t freq, uint16_t dur)
+{
+  toneSequence[0] = freq;
+  toneSequence[1] = dur;
+  toneSequence[2] = TONES_END;
+
+  tone(toneSequence);
+}
+
+void Arduboy2Core::tone(uint16_t *tones)
+{
+  uint16_t freq;
+
+  *simple_out &= ~(FULLNOTE_MASK); // reset 'fullnote' value to zero
+
+  tonesStart = tonesIndex = tones; // set to start of sequence array
+
+  freq = *tonesIndex++; // get tone frequency
+  duration = *tonesIndex++; // get tone duration
+
+  *simple_out |= (FULLNOTE_MASK & ((freq & 63) << 16)); // set 'fullnote' value
+
+  tonesPlaying = true;
+}
+
+void Arduboy2Core::timer()
+{
+  uint16_t freq;
+
+  if (duration == 0)
+  {
+    if (tonesPlaying)
+    {
+      freq = *tonesIndex++; // get tone frequency
+
+      if (freq == TONES_END)
+      {
+        tonesPlaying = false; // if freq is actually an "end of sequence" marker
+      }
+      else
+      {
+        duration = *tonesIndex++; // get tone duration
+        if (freq == NOTE_REST)
+        {
+          *simple_out &= ~(FULLNOTE_MASK); // mute
+        }
+        else
+        {
+          *simple_out |= (FULLNOTE_MASK & ((freq & 63) << 16)); // 'fullnote'
+        }
+      }
+    }
+  }
+  else if (--duration < 2)
+  {
+    *simple_out &= ~(FULLNOTE_MASK); // mute
+  }
+}
+
 void Arduboy2Core::boot()
 {
   bootPins();
@@ -17,7 +85,40 @@ void Arduboy2Core::boot()
 // This routine must be modified if any pins are moved to a different port
 void Arduboy2Core::bootPins()
 {
-  pinMode(LED_BUILTIN, OUTPUT);
+  //
+  *simple_out |= SD_RD_MASK; // sd_rd HIGH (initialise EEPROM)
+  *simple_out &= ~(FULLNOTE_MASK | SD_RD_MASK); // mute + sd_rd LOW
+
+  pinMode(LED_BUILTIN, OUTPUT); // setup LED_USER
+}
+
+uint8_t Arduboy2Core::readEEPROM(uint16_t address)
+{
+  //while (*simple_in & SD_ACK_MASK) { } // wait for sd_ack
+
+  uint8_t value;
+
+  *simple_out &= ~(ADDRESS_MASK); // reset address to zero
+  if (address > 0) *simple_out |= (ADDRESS_MASK & (address << 23)); // set address
+
+  value = (*simple_in >> 7);
+
+  return value;
+}
+
+void Arduboy2Core::writeEEPROM(uint16_t address, uint8_t value)
+{
+  while (*simple_in & SD_ACK_MASK) { } // wait for sd_ack
+
+  *simple_out &= ~(ADDRESS_MASK); // reset address to zero
+  if (address > 0) *simple_out |= (ADDRESS_MASK & (address << 23)); // set address
+  *simple_out &= ~(DATA_MASK); // reset data to zero
+  if (value > 0) *simple_out |= (DATA_MASK & (value << 8)); // set data
+
+  *simple_out |=   GLUE_WR_MASK;  // glue_wr HIGH
+  *simple_out &= ~(GLUE_WR_MASK); // glue_wr LOW
+  *simple_out |=   SD_WR_MASK;    // sd_wr   HIGH
+  *simple_out &= ~(SD_WR_MASK);   // sd_wr   LOW
 }
 
 uint8_t Arduboy2Core::width() { return WIDTH; }
@@ -26,45 +127,40 @@ uint8_t Arduboy2Core::height() { return HEIGHT; }
 
 /* Drawing */
 
-volatile uint32_t *simple_out = (uint32_t *)0xFFFFFF10;
-
 void Arduboy2Core::paintScreen(uint8_t image[], bool clear)
 {
-  *simple_out |= 0x00020000; // dc HIGH
+  *simple_out |= DC_MASK; // dc HIGH
 
   for (uint16_t i = 0; i < 1024; i++) // 1,024 bytes
   {
-    for (uint8_t r = 0; r < 8; r++) // eight bits
-    {
-      uint8_t bitMask = (1<<r);
+    *simple_out &= ~(DATA_MASK); // reset data to zero
+    if (image[i] > 0) *simple_out |= (DATA_MASK & (image[i] << 8)); // set data
 
-      if (image[i] & bitMask) *simple_out |=  (1<<(r+8));
-      else                    *simple_out &= ~(1<<(r+8));
-    }
     if (clear) image[i] = 0;
-    *simple_out &= ~(0x00010000); // clk LOW
-    *simple_out |=   0x00010000;  // clk HIGH
+
+    *simple_out &= ~(CLK_MASK); // clk LOW
+    *simple_out |=   CLK_MASK;  // clk HIGH
   }
 
   // 'VSYNC'
-  *simple_out &= ~(0x00030000); // clk LOW + dc LOW
-  *simple_out |=   0x00010000;  // clk HIGH
+  *simple_out &= ~(CLK_MASK | DC_MASK); // clk LOW + dc LOW
+  *simple_out |=   CLK_MASK; // clk HIGH
 }
 
 void Arduboy2Core::blank()
 {
-  *simple_out |=   0x00020000;  // dc HIGH
-  *simple_out &= ~(0x0000FF00); // data LOW
+  *simple_out |= DC_MASK; // dc HIGH
+  *simple_out &= ~(DATA_MASK); // data LOW
 
   for (uint16_t i = 0; i < 1024; i++) // 1,024 bytes
   {
-    *simple_out &= ~(0x00010000); // clk LOW
-    *simple_out |=   0x00010000;  // clk HIGH
+    *simple_out &= ~(CLK_MASK); // clk LOW
+    *simple_out |=   CLK_MASK;  // clk HIGH
   }
 
   // 'VSYNC'
-  *simple_out &= ~(0x00030000); // clk LOW + dc LOW
-  *simple_out |=   0x00010000;  // clk HIGH
+  *simple_out &= ~(CLK_MASK | DC_MASK); // clk LOW + dc LOW
+  *simple_out |=   CLK_MASK; // clk HIGH
 }
 
 // turn all display pixels on, ignoring buffer contents
@@ -73,23 +169,21 @@ void Arduboy2Core::allPixelsOn(bool on)
 {
   if (on)
   {
-    *simple_out |= 0x0002FF00; // dc HIGH + data HIGH
+    *simple_out |= DC_MASK | DATA_MASK; // dc HIGH + data HIGH
 
     for (uint16_t i = 0; i < 1024; i++) // 1,024 bytes
     {
-      *simple_out &= ~(0x00010000); // clk LOW
-      *simple_out |=   0x00010000;  // clk HIGH
+      *simple_out &= ~(CLK_MASK); // clk LOW
+      *simple_out |=   CLK_MASK;  // clk HIGH
     }
 
     // 'VSYNC'
-    *simple_out &= ~(0x00030000); // clk LOW + dc LOW
-    *simple_out |=   0x00010000;  // clk HIGH
+    *simple_out &= ~(CLK_MASK | DC_MASK); // clk LOW + dc LOW
+    *simple_out |=   CLK_MASK; // clk HIGH
   }
 }
 
 /* Buttons */
-
-volatile uint32_t *simple_in = (uint32_t *)0xFFFFFF02;
 
 uint8_t Arduboy2Core::buttonsState()
 {

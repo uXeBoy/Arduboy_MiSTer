@@ -54,7 +54,15 @@ entity glue is
     rs232_txd:  out std_logic;
     rs232_rxd:   in std_logic;
     led:        out std_logic;
-    buttons:     in std_logic_vector(31 downto 0);
+    buttons:     in std_logic_vector(5 downto 0);
+    audio:      out std_logic;
+    sd_rd:      out std_logic;
+    sd_wr:      out std_logic;
+    glue_wr:    out std_logic;
+    address:    out std_logic_vector(8 downto 0);
+    buffer_din: out std_logic_vector(7 downto 0);
+    buffer_dout: in std_logic_vector(7 downto 0);
+    sd_ack:      in std_logic;
     HSync:      out std_logic;
     VSync:      out std_logic;
     HBlank:     out std_logic;
@@ -73,6 +81,7 @@ architecture Behavioral of glue is
     oled_dc:     in std_logic;
     oled_clk:    in std_logic;
     oled_data:   in std_logic_vector(7 downto 0);
+    buffer_din: out std_logic_vector(7 downto 0);
     hsync:      out std_logic;
     vsync:      out std_logic;
     hblank:     out std_logic;
@@ -81,9 +90,18 @@ architecture Behavioral of glue is
     );
     end component;
 
+    component music
+    port (
+    clk:      in std_logic;
+    fullnote: in std_logic_vector(5 downto 0);
+    speaker: out std_logic
+    );
+    end component;
+
     signal dc:       std_logic;
     signal clk:      std_logic;
     signal data:     std_logic_vector(7 downto 0);
+    signal fullnote: std_logic_vector(5 downto 0);
 
 begin
 
@@ -95,11 +113,19 @@ begin
     oled_dc    => dc,
     oled_clk   => clk,
     oled_data  => data,
+    buffer_din => buffer_din,
     hsync      => HSync,
     vsync      => VSync,
     hblank     => HBlank,
     vblank     => VBlank,
     pixelValue => pixelValue
+    );
+
+    sound: music
+    port map (
+    clk      => clk_25m,
+    fullnote => fullnote,
+    speaker  => audio
     );
 
     -- generic BRAM glue
@@ -115,13 +141,16 @@ begin
     sio_rxd(0) => rs232_rxd, -- PIN_AG11 USER_IO[0] (Arduino SCL)
     sio_txd(0) => rs232_txd, -- PIN_AH9  USER_IO[1] (Arduino SDA)
     sio_break(0) => open, spi_miso => "",
-    simple_in(31 downto 0) => buttons,
-    simple_out(17) => dc, simple_out(16) => clk,
+    simple_in(31 downto 15) => open,
+    simple_in(14 downto 7) => buffer_dout,
+    simple_in(6) => sd_ack, simple_in(5 downto 0) => buttons,
+    simple_out(31 downto 23) => address, simple_out(22) => glue_wr,
+    simple_out(21 downto 16) => fullnote,
     simple_out(15 downto 8) => data,
+    simple_out(7) => dc, simple_out(6) => clk,
     simple_out(5) => led, -- PIN_Y15 LED_USER (GPIO_1[0])
-    simple_out(31 downto 18) => open,
-    simple_out(7 downto 6) => open,
-    simple_out(4 downto 0) => open
+    simple_out(4) => sd_rd, simple_out(3) => sd_wr,
+    simple_out(2 downto 0) => open
     );
 
 end Behavioral;

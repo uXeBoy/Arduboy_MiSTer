@@ -24,10 +24,13 @@ module vgaHdmi(
   input oled_dc,
   input oled_clk,
   input  [7:0] oled_data,
+  output [7:0] buffer_din,
   output reg hsync, vsync,
   output hblank, vblank,
   output pixelValue
 );
+
+assign buffer_din = oled_data;
 
 reg dataEnable;
 

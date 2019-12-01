@@ -128,11 +128,11 @@ assign VGA_SL    = 0;
 assign LED_POWER = 0;
 assign LED_DISK  = 0;
 assign BUTTONS   = 0;
-assign AUDIO_L   = 0;
-assign AUDIO_R   = 0;
 assign AUDIO_S   = 0;
 assign AUDIO_MIX = 0;
-assign ADC_BUS = 'Z;
+assign AUDIO_L   = (audio) ? 16'h7FFF : 16'd0;
+assign AUDIO_R   = AUDIO_L;
+assign ADC_BUS   = 'Z;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_RD, DDRAM_DIN, DDRAM_BE, DDRAM_WE} = 0;
 assign {SDRAM_CLK, SDRAM_CKE, SDRAM_A, SDRAM_BA, SDRAM_DQ, SDRAM_DQML, SDRAM_DQMH, SDRAM_nCS, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nWE} = 'Z;
@@ -143,7 +143,6 @@ assign USER_OUT[0] = 1;
 localparam CONF_STR =
 {
     "Arduboy;;",
-    "R0,Reset;",
     "J1,A,B;",
     "V,v",`BUILD_DATE
 };
@@ -155,7 +154,16 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
     .clk_sys(clk_100m),
     .HPS_BUS(HPS_BUS),
     .conf_str(CONF_STR),
-    .joystick_0(joystick)
+    .joystick_0(joystick),
+
+    .sd_lba(0),
+    .sd_rd(sd_rd),
+    .sd_wr(sd_wr),
+    .sd_ack(sd_ack),
+    .sd_buff_addr(sd_buff_addr),
+    .sd_buff_dout(sd_buff_dout),
+    .sd_buff_din(sd_buff_din),
+    .sd_buff_wr(sd_buff_wr)
 );
 
 video_mixer #(.LINE_LENGTH(800), .HALF_DEPTH(1)) video_mixer
@@ -181,9 +189,25 @@ video_mixer #(.LINE_LENGTH(800), .HALF_DEPTH(1)) video_mixer
     .VBlank(VBlank)
 );
 
+wire clk_100m, clk_25m, lock;
+
+pll_50m pll_50m
+(
+    .refclk(CLK_50M),
+    .outclk_0(clk_100m),
+    .outclk_1(clk_25m),
+    .locked(lock)
+);
+
 wire HSync, VSync;
 wire HBlank, VBlank;
 wire pixelValue;
+wire audio;
+wire glue_rd;
+wire glue_wr;
+wire [8:0] address;
+wire [7:0] buffer_din;
+wire [7:0] buffer_dout;
 
 glue glue
 (
@@ -193,7 +217,15 @@ glue glue
     .rs232_txd(USER_OUT[1]),
     .rs232_rxd(USER_IN[0]),
     .led(LED_USER),
-    .buttons(joystick),
+    .buttons(joystick[5:0]),
+    .audio(audio),
+    .sd_rd(sd_rd_in),
+    .sd_wr(sd_wr_in),
+    .glue_wr(glue_wr),
+    .address(address),
+    .buffer_din(buffer_din),
+    .buffer_dout(buffer_dout),
+    .sd_ack(sd_ack),
     .hsync(HSync),
     .vsync(VSync),
     .hblank(HBlank),
@@ -201,15 +233,49 @@ glue glue
     .pixelValue(pixelValue)
 );
 
-wire clk_100m, clk_25m, lock;
+reg  [2:0] sd_rd;
+reg  [2:0] sd_wr;
+wire sd_rd_in;
+wire sd_wr_in;
+wire sd_ack;
+wire sd_buff_addr;
+wire sd_buff_dout;
+wire sd_buff_din;
+wire sd_buff_wr;
 
-pll_50m pll_50m
+dpram #(9,8) sdbuf
 (
-    .refclk(CLK_50M),
-    .rst(RESET),
-    .outclk_0(clk_100m),
-    .outclk_1(clk_25m),
-    .locked(lock)
+    .clock(clk_100m),
+
+    .address_a(sd_buff_addr),
+    .data_a(sd_buff_dout),
+    .wren_a(sd_buff_wr),
+    .q_a(sd_buff_din),
+
+    .address_b(address),
+    .data_b(buffer_din),
+    .wren_b(glue_wr),
+    .q_b(buffer_dout)
 );
+
+reg risingSD_RD, risingSD_WR;
+reg [1:3] resyncSD_RD;
+reg [1:3] resyncSD_WR;
+
+always @(posedge clk_100m)
+begin
+  if (risingSD_WR) sd_wr <= 1;
+  else if (risingSD_RD) sd_rd <= 1;
+  else if (sd_ack) {sd_rd, sd_wr} <= 0;
+
+  // detect rising and falling edge(s)
+  // (https://www.doulos.com/knowhow/fpga/synchronisation/)
+  risingSD_RD  <= resyncSD_RD[2] & !resyncSD_RD[3];
+  risingSD_WR  <= resyncSD_WR[2] & !resyncSD_WR[3];
+
+  // update history shifter(s)
+  resyncSD_RD <= {sd_rd_in, resyncSD_RD[1:2]};
+  resyncSD_WR <= {sd_wr_in, resyncSD_WR[1:2]};
+end
 
 endmodule
