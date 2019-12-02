@@ -233,8 +233,8 @@ glue glue
     .pixelValue(pixelValue)
 );
 
-reg  [2:0] sd_rd;
-reg  [2:0] sd_wr;
+wire sd_rd;
+wire sd_wr;
 wire sd_rd_in;
 wire sd_wr_in;
 wire sd_ack;
@@ -242,6 +242,9 @@ wire sd_buff_addr;
 wire sd_buff_dout;
 wire sd_buff_din;
 wire sd_buff_wr;
+
+assign sd_rd = (sd_ack) ? 0 : sd_rd_in;
+assign sd_wr = (sd_ack) ? 0 : sd_wr_in;
 
 dpram #(9,8) sdbuf
 (
@@ -257,25 +260,5 @@ dpram #(9,8) sdbuf
     .wren_b(glue_wr),
     .q_b(buffer_dout)
 );
-
-reg risingSD_RD, risingSD_WR;
-reg [1:3] resyncSD_RD;
-reg [1:3] resyncSD_WR;
-
-always @(posedge clk_100m)
-begin
-  if (risingSD_WR) sd_wr <= 1;
-  else if (risingSD_RD) sd_rd <= 1;
-  else if (sd_ack) {sd_rd, sd_wr} <= 0;
-
-  // detect rising and falling edge(s)
-  // (https://www.doulos.com/knowhow/fpga/synchronisation/)
-  risingSD_RD  <= resyncSD_RD[2] & !resyncSD_RD[3];
-  risingSD_WR  <= resyncSD_WR[2] & !resyncSD_WR[3];
-
-  // update history shifter(s)
-  resyncSD_RD <= {sd_rd_in, resyncSD_RD[1:2]};
-  resyncSD_WR <= {sd_wr_in, resyncSD_WR[1:2]};
-end
 
 endmodule
