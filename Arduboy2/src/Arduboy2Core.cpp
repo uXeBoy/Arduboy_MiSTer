@@ -85,17 +85,16 @@ void Arduboy2Core::boot()
 // This routine must be modified if any pins are moved to a different port
 void Arduboy2Core::bootPins()
 {
-  //
-  *simple_out |= SD_RD_MASK; // sd_rd HIGH (initialise EEPROM)
-  *simple_out &= ~(FULLNOTE_MASK | SD_RD_MASK); // mute + sd_rd LOW
+  *simple_out &= ~(FULLNOTE_MASK); // mute
 
   pinMode(LED_BUILTIN, OUTPUT); // setup LED_USER
+
+  while (~(*simple_in & SD_ACK_MASK)) {*simple_out |= SD_RD_MASK;}
+  *simple_out &= ~(SD_RD_MASK); // sd_rd LOW
 }
 
 uint8_t Arduboy2Core::readEEPROM(uint16_t address)
 {
-  //while (*simple_in & SD_ACK_MASK) { } // wait for sd_ack
-
   uint8_t value;
 
   *simple_out &= ~(ADDRESS_MASK); // reset address to zero
@@ -108,17 +107,16 @@ uint8_t Arduboy2Core::readEEPROM(uint16_t address)
 
 void Arduboy2Core::writeEEPROM(uint16_t address, uint8_t value)
 {
-  while (*simple_in & SD_ACK_MASK) { } // wait for sd_ack
-
   *simple_out &= ~(ADDRESS_MASK); // reset address to zero
   if (address > 0) *simple_out |= (ADDRESS_MASK & (address << 23)); // set address
   *simple_out &= ~(DATA_MASK); // reset data to zero
   if (value > 0) *simple_out |= (DATA_MASK & (value << 8)); // set data
 
-  *simple_out |=   GLUE_WR_MASK;  // glue_wr HIGH
+  *simple_out |=   GLUE_WR_MASK; // glue_wr HIGH
   *simple_out &= ~(GLUE_WR_MASK); // glue_wr LOW
-  *simple_out |=   SD_WR_MASK;    // sd_wr   HIGH
-  *simple_out &= ~(SD_WR_MASK);   // sd_wr   LOW
+
+  while (~(*simple_in & SD_ACK_MASK)) {*simple_out |= SD_WR_MASK;}
+  *simple_out &= ~(SD_WR_MASK); // sd_wr LOW
 }
 
 uint8_t Arduboy2Core::width() { return WIDTH; }
