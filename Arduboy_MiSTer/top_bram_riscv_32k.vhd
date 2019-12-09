@@ -144,13 +144,13 @@ begin
     simple_in(31 downto 15) => open,
     simple_in(14 downto 7) => buffer_dout,
     simple_in(6) => sd_ack, simple_in(5 downto 0) => buttons,
-    simple_out(31 downto 23) => address, simple_out(22) => glue_wr,
-    simple_out(21 downto 16) => fullnote,
-    simple_out(15 downto 8) => data,
-    simple_out(7) => dc, simple_out(6) => clk,
-    simple_out(5) => led, -- PIN_Y15 LED_USER (GPIO_1[0])
-    simple_out(4) => sd_rd, simple_out(3) => sd_wr,
-    simple_out(2 downto 0) => open
+    simple_out(31) => sd_rd, simple_out(30) => sd_wr,
+    simple_out(29) => glue_wr, simple_out(28 downto 23) => fullnote,
+    simple_out(22) => dc, simple_out(21) => clk,
+    simple_out(20 downto 18) => open,
+    simple_out(17 downto 10) => data,
+    simple_out(9 downto 1) => address,
+    simple_out(0) => led -- PIN_Y15 LED_USER (GPIO_1[0])
     );
 
 end Behavioral;

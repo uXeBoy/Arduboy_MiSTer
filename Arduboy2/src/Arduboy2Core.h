@@ -28,8 +28,8 @@
 // #define AB_DEVKIT    //< compile for the official dev kit
 #endif
 
-#define RGB_ON LOW   /**< For digitially setting an RGB LED on using digitalWriteRGB() */
-#define RGB_OFF HIGH /**< For digitially setting an RGB LED off using digitalWriteRGB() */
+#define RGB_ON HIGH  /**< For digitially setting an RGB LED on using digitalWriteRGB() */
+#define RGB_OFF LOW  /**< For digitially setting an RGB LED off using digitalWriteRGB() */
 #define BLUE_LED 13  /**< The pin number for the blue color in the RGB LED. */
 
 // bit values for button states
@@ -45,14 +45,14 @@
 #define HEIGHT 64 /**< The height of the display in pixels */
 
 #define SD_ACK_MASK    0x00000040
-#define ADDRESS_MASK   0xFF800000
-#define GLUE_WR_MASK   0x00400000
-#define FULLNOTE_MASK  0x003F0000
-#define DATA_MASK      0x0000FF00
-#define DC_MASK        0x00000080
-#define CLK_MASK       0x00000040
-#define SD_RD_MASK     0x00000010
-#define SD_WR_MASK     0x00000008
+#define SD_RD_MASK     0x80000000
+#define SD_WR_MASK     0x40000000
+#define GLUE_WR_MASK   0x20000000
+#define FULLNOTE_MASK  0x1F800000
+#define DC_MASK        0x00400000
+#define CLK_MASK       0x00200000
+#define DATA_MASK      0x0003FC00
+#define ADDRESS_MASK   0x000003FE
 
 #define NOTE_REST  0
 #define NOTE_A2    1

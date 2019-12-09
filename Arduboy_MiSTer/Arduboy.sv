@@ -160,6 +160,7 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
     .sd_rd(sd_rd),
     .sd_wr(sd_wr),
     .sd_ack(sd_ack),
+    .sd_conf(0),
     .sd_buff_addr(sd_buff_addr),
     .sd_buff_dout(sd_buff_dout),
     .sd_buff_din(sd_buff_din),
@@ -194,6 +195,7 @@ wire clk_100m, clk_25m, lock;
 pll_50m pll_50m
 (
     .refclk(CLK_50M),
+    .rst(RESET),
     .outclk_0(clk_100m),
     .outclk_1(clk_25m),
     .locked(lock)
@@ -203,7 +205,6 @@ wire HSync, VSync;
 wire HBlank, VBlank;
 wire pixelValue;
 wire audio;
-wire glue_rd;
 wire glue_wr;
 wire [8:0] address;
 wire [7:0] buffer_din;
@@ -233,32 +234,47 @@ glue glue
     .pixelValue(pixelValue)
 );
 
-wire sd_rd;
-wire sd_wr;
+reg  sd_rd;
+reg  sd_wr;
 wire sd_rd_in;
 wire sd_wr_in;
 wire sd_ack;
-wire sd_buff_addr;
-wire sd_buff_dout;
-wire sd_buff_din;
+wire [8:0] sd_buff_addr;
+wire [7:0] sd_buff_dout;
+wire [7:0] sd_buff_din;
 wire sd_buff_wr;
 
-assign sd_rd = (sd_ack) ? 0 : sd_rd_in;
-assign sd_wr = (sd_ack) ? 0 : sd_wr_in;
-
-dpram #(9,8) sdbuf
+sdbuf buffer
 (
-    .clock(clk_100m),
-
+    .clock_a(clk_100m),
     .address_a(sd_buff_addr),
     .data_a(sd_buff_dout),
     .wren_a(sd_buff_wr),
     .q_a(sd_buff_din),
 
+    .clock_b(clk_100m),
     .address_b(address),
     .data_b(buffer_din),
     .wren_b(glue_wr),
     .q_b(buffer_dout)
 );
+
+reg delaySD_RD, delaySD_WR;
+wire risingSD_RD, risingSD_WR;
+assign risingSD_RD = (sd_rd_in & ~delaySD_RD);
+assign risingSD_WR = (sd_wr_in & ~delaySD_WR);
+
+always @(posedge clk_100m)
+begin
+  if (sd_ack) begin
+    sd_wr <= 1'b0;
+    sd_rd <= 1'b0;
+  end
+  else if (risingSD_WR) sd_wr <= 1'b1;
+  else if (risingSD_RD) sd_rd <= 1'b1;
+
+  delaySD_WR <= sd_wr_in;
+  delaySD_RD <= sd_rd_in;
+end
 
 endmodule

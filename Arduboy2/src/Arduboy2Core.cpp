@@ -37,7 +37,7 @@ void Arduboy2Core::tone(uint16_t *tones)
   freq = *tonesIndex++; // get tone frequency
   duration = *tonesIndex++; // get tone duration
 
-  *simple_out |= (FULLNOTE_MASK & ((freq & 63) << 16)); // set 'fullnote' value
+  *simple_out |= (FULLNOTE_MASK & ((freq & 63) << 23)); // set 'fullnote' value
 
   tonesPlaying = true;
 }
@@ -65,7 +65,7 @@ void Arduboy2Core::timer()
         }
         else
         {
-          *simple_out |= (FULLNOTE_MASK & ((freq & 63) << 16)); // 'fullnote'
+          *simple_out |= (FULLNOTE_MASK & ((freq & 63) << 23)); // 'fullnote'
         }
       }
     }
@@ -85,12 +85,12 @@ void Arduboy2Core::boot()
 // This routine must be modified if any pins are moved to a different port
 void Arduboy2Core::bootPins()
 {
-  *simple_out &= ~(FULLNOTE_MASK); // mute
+  *simple_out &= ~(FULLNOTE_MASK |
+                   SD_WR_MASK | SD_RD_MASK); // mute, sd_wr + sd_rd LOW
 
   pinMode(LED_BUILTIN, OUTPUT); // setup LED_USER
 
-  while (~(*simple_in & SD_ACK_MASK)) {*simple_out |= SD_RD_MASK;}
-  *simple_out &= ~(SD_RD_MASK); // sd_rd LOW
+  *simple_out |= SD_RD_MASK; // sd_rd HIGH (initialise EEPROM)
 }
 
 uint8_t Arduboy2Core::readEEPROM(uint16_t address)
@@ -98,7 +98,7 @@ uint8_t Arduboy2Core::readEEPROM(uint16_t address)
   uint8_t value;
 
   *simple_out &= ~(ADDRESS_MASK); // reset address to zero
-  if (address > 0) *simple_out |= (ADDRESS_MASK & (address << 23)); // set address
+  if (address > 0) *simple_out |= (ADDRESS_MASK & (address << 1)); // set address
 
   value = (*simple_in >> 7);
 
@@ -107,16 +107,22 @@ uint8_t Arduboy2Core::readEEPROM(uint16_t address)
 
 void Arduboy2Core::writeEEPROM(uint16_t address, uint8_t value)
 {
+  *simple_out &= ~(SD_WR_MASK | SD_RD_MASK); // sd_wr + sd_rd LOW
+
   *simple_out &= ~(ADDRESS_MASK); // reset address to zero
-  if (address > 0) *simple_out |= (ADDRESS_MASK & (address << 23)); // set address
-  *simple_out &= ~(DATA_MASK); // reset data to zero
-  if (value > 0) *simple_out |= (DATA_MASK & (value << 8)); // set data
+  if (address > 0) *simple_out |= (ADDRESS_MASK & (address << 1)); // set address
 
-  *simple_out |=   GLUE_WR_MASK; // glue_wr HIGH
-  *simple_out &= ~(GLUE_WR_MASK); // glue_wr LOW
+  if (value != (*simple_in >> 7))
+  {
+    *simple_out &= ~(DATA_MASK); // reset data to zero
+    if (value > 0) *simple_out |= (DATA_MASK & (value << 10)); // set data
 
-  while (~(*simple_in & SD_ACK_MASK)) {*simple_out |= SD_WR_MASK;}
-  *simple_out &= ~(SD_WR_MASK); // sd_wr LOW
+    *simple_out |=   GLUE_WR_MASK;  // glue_wr HIGH
+    *simple_out &= ~(GLUE_WR_MASK); // glue_wr LOW
+
+    while (*simple_in & SD_ACK_MASK) { } // wait if busy
+    *simple_out |= SD_WR_MASK; // sd_wr HIGH
+  }
 }
 
 uint8_t Arduboy2Core::width() { return WIDTH; }
@@ -132,7 +138,7 @@ void Arduboy2Core::paintScreen(uint8_t image[], bool clear)
   for (uint16_t i = 0; i < 1024; i++) // 1,024 bytes
   {
     *simple_out &= ~(DATA_MASK); // reset data to zero
-    if (image[i] > 0) *simple_out |= (DATA_MASK & (image[i] << 8)); // set data
+    if (image[i] > 0) *simple_out |= (DATA_MASK & (image[i] << 10)); // set data
 
     if (clear) image[i] = 0;
 
