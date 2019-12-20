@@ -14,6 +14,6 @@ and 'Circuit Dude' by Jonathan Holmes:
 
 http://www.crait.net/
 
-There is a bug I haven't nailed down yet where half way down the screen pixels get shifted over by one (can be seen clearly on the borders in Circuit Dude), would be great if anyone else is able to point out what's going on there?! I did initially look at basing this core on Alorium Technology's implementation of an ATmega328 microcontroller on an FPGA - but part of it is closed-source and unfortunately only compatible with the Intel MAX 10, not the Cyclone V:
+I did initially look at basing this core on Alorium Technology's implementation of an ATmega328 microcontroller on an FPGA - but part of it is closed-source and unfortunately only compatible with the Intel MAX 10, not the Cyclone V:
 
 https://github.com/AloriumTechnology/XLR8Core/issues/1
