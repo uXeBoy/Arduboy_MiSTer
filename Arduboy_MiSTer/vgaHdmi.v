@@ -73,6 +73,7 @@ begin
   endcase
 end
 
+wire dataEnable;
 reg  invertLatched;
 reg  [9:0] pixelZ;
 wire [6:0] pixelX;
@@ -85,6 +86,7 @@ assign pixelY = pixelV_offset / 5;
 assign bitPosition = (pixelY & 3'd7);
 assign bytePosition = pixelZ + pixelX;
 assign pixelValue = (dataEnable) ? ((invertLatched) ? ~tempByte[bitPosition] : tempByte[bitPosition]) : 1'b0;
+assign dataEnable = (pixelH > 0 && pixelH < 640 && pixelV_offset > 0 && pixelV_offset < 320) ? 1'b1 : 1'b0;
 
 wire reset_n;
 assign reset_n = ~reset;
@@ -97,7 +99,6 @@ initial begin
   pixelH        = 0;
   pixelV        = 0;
   pixelV_offset = 0;
-  dataEnable    = 0;
 end
 
 // Manejo de Pixeles y Sincronizacion
@@ -146,20 +147,6 @@ always @(posedge clock or posedge reset_n) begin
       vsync <= 1;
     else
       vsync <= 0;
-  end
-end
-
-reg dataEnable;
-
-// dataEnable signal
-always @(posedge clock or posedge reset_n) begin
-  if(reset_n) dataEnable <= 0;
-
-  else begin
-    if(pixelH > 0 && pixelH < 640 && pixelV_offset > 0 && pixelV_offset < 320)
-      dataEnable <= 1;
-    else
-      dataEnable <= 0;
   end
 end
 
