@@ -3,6 +3,9 @@ set_global_assignment -name VERILOG_FILE pll_50m.v
 set_global_assignment -name VERILOG_FILE vgaHdmi.v
 set_global_assignment -name SYSTEMVERILOG_FILE Arduboy.sv
 set_global_assignment -name VERILOG_FILE music.v
+set_global_assignment -name VERILOG_FILE music_latched.v
+set_global_assignment -name VERILOG_FILE ring_counter.v
+set_global_assignment -name VERILOG_FILE unstable_counters.v
 set_global_assignment -name VHDL_FILE cpu/alu.vhd
 set_global_assignment -name VHDL_FILE cpu/debug.vhd
 set_global_assignment -name VHDL_FILE cpu/defs_f32c.vhd

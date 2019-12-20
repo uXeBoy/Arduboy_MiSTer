@@ -23,16 +23,17 @@ module vgaHdmi(
   input reset,
   input oled_dc,
   input oled_clk,
+  input invert,
   input  [7:0] oled_data,
   output [7:0] buffer_din,
+  output [7:0] music_data,
   output reg hsync, vsync,
   output hblank, vblank,
   output pixelValue
 );
 
-assign buffer_din = oled_data;
-
-reg dataEnable;
+assign buffer_din = (oled_dc) ? 8'b00000000 : oled_data;
+assign music_data = (oled_dc) ? 8'b00000000 : oled_data;
 
 assign hblank = (pixelH > 640);
 assign vblank = (pixelV > 480);
@@ -57,18 +58,33 @@ begin
   tempByte <= mem[bytePosition];
 end
 
+always @(*)
+begin
+  case (pixelY[5:3])
+    3'd0 : pixelZ = 10'd0;
+    3'd1 : pixelZ = 10'd128;
+    3'd2 : pixelZ = 10'd256;
+    3'd3 : pixelZ = 10'd384;
+    3'd4 : pixelZ = 10'd512;
+    3'd5 : pixelZ = 10'd640;
+    3'd6 : pixelZ = 10'd768;
+    3'd7 : pixelZ = 10'd896;
+    default : pixelZ = 10'd0;
+  endcase
+end
+
+reg  invertLatched;
+reg  [9:0] pixelZ;
 wire [6:0] pixelX;
 wire [5:0] pixelY;
-wire [2:0] pixelZ;
 wire [2:0] bitPosition;
 wire [9:0] bytePosition;
 reg  [7:0] tempByte;
 assign pixelX = pixelH / 5;
 assign pixelY = pixelV_offset / 5;
-assign pixelZ = pixelY[5:3];
-assign bitPosition = pixelY % 8;
-assign bytePosition = (pixelZ * 128) + pixelX;
-assign pixelValue = (dataEnable) ? tempByte[bitPosition] : 1'b0;
+assign bitPosition = (pixelY & 3'd7);
+assign bytePosition = pixelZ + pixelX;
+assign pixelValue = (dataEnable) ? ((invertLatched) ? ~tempByte[bitPosition] : tempByte[bitPosition]) : 1'b0;
 
 wire reset_n;
 assign reset_n = ~reset;
@@ -99,7 +115,10 @@ always @(posedge clock or posedge reset_n) begin
     if(pixelH==0 && pixelV!=524) begin
       pixelH <= pixelH + 1'b1;
       pixelV <= pixelV + 1'b1;
-      if(pixelV==80) pixelV_offset <= 0;
+      if(pixelV==80) begin
+        pixelV_offset <= 0;
+        invertLatched <= invert;
+      end
       else pixelV_offset <= pixelV_offset + 1'b1;
     end
     else if(pixelH==0 && pixelV==524) begin
@@ -129,6 +148,8 @@ always @(posedge clock or posedge reset_n) begin
       vsync <= 0;
   end
 end
+
+reg dataEnable;
 
 // dataEnable signal
 always @(posedge clock or posedge reset_n) begin

@@ -51,6 +51,8 @@
 #define FULLNOTE_MASK  0x1F800000
 #define DC_MASK        0x00400000
 #define CLK_MASK       0x00200000
+#define INVERT_MASK    0x00100000
+#define LATCH_MASK     0x00080000
 #define DATA_MASK      0x0003FC00
 #define ADDRESS_MASK   0x000003FE
 
@@ -119,6 +121,7 @@
 #define NOTE_AS7  62
 #define NOTE_B7   63
 #define TONES_END 64 // Frequency value for sequence termination. (No duration follows)
+#define TONES_REPEAT 128 // Frequency value for sequence repeat. (No duration follows)
 
 /** \brief
  * Lower level functions generally dealing directly with the hardware.
@@ -210,6 +213,23 @@ class Arduboy2Core
      * them off.
      */
     void static blank();
+
+    /** \brief
+     * Invert the entire display or set it back to normal.
+     *
+     * \param inverse `true` will invert the display. `false` will set the
+     * display to no-inverted.
+     *
+     * \details
+     * Calling this function with a value of `true` will set the display to
+     * inverted mode. A pixel with a value of 0 will be on and a pixel set to 1
+     * will be off.
+     *
+     * Once in inverted mode, the display will remain this way
+     * until it is set back to non-inverted mode by calling this function with
+     * `false`.
+     */
+    void static invert(bool inverse);
 
     /** \brief
      * Turn all display pixels on or display the buffer contents.
@@ -325,72 +345,81 @@ class Arduboy2Core
      */
     void static delayShort(uint16_t ms) __attribute__ ((noinline));
 
-  /** \brief
-   * The counter used by the `timer()` function to time the duration of a tone.
-   *
-   * \details
-   * This variable is set by the `dur` parameter of the `tone()` function.
-   * It is then decremented each time the `timer()` function is called, if its
-   * value isn't 0. When `timer()` decrements it to 0, a tone that is playing
-   * will be stopped.
-   *
-   * A sketch can determine if a tone is currently playing by testing if
-   * this variable is non-zero (assuming it's a timed tone, not a continuous
-   * tone).
-   *
-   * Example:
-   * \code{.cpp}
-   * beep.tone(beep.freq(1000), 15);
-   * while (beep.duration != 0) { } // wait for the tone to stop playing
-   * \endcode
-   *
-   * It can also be manipulated directly by the sketch, although this should
-   * seldom be necessary.
-   */
-  static uint16_t duration;
-  static bool tonesPlaying;
-  static uint16_t toneSequence[];
+    /** \brief
+     * The counter used by the `timer()` function to time the duration of a tone.
+     *
+     * \details
+     * This variable is set by the `dur` parameter of the `tone()` function.
+     * It is then decremented each time the `timer()` function is called, if its
+     * value isn't 0. When `timer()` decrements it to 0, a tone that is playing
+     * will be stopped.
+     *
+     * A sketch can determine if a tone is currently playing by testing if
+     * this variable is non-zero (assuming it's a timed tone, not a continuous
+     * tone).
+     *
+     * Example:
+     * \code{.cpp}
+     * beep.tone(beep.freq(1000), 15);
+     * while (beep.duration != 0) { } // wait for the tone to stop playing
+     * \endcode
+     *
+     * It can also be manipulated directly by the sketch, although this should
+     * seldom be necessary.
+     */
+    static uint16_t duration;
+    static bool tonesPlaying;
+    static uint16_t toneSequence[];
+    static uint16_t duration2;
+    static bool tonesPlaying2;
+    static uint16_t toneSequence2[];
 
-  /** \brief
-   * Play a tone for a given duration.
-   *
-   * \param count The count to be loaded into the timer/counter to play
-   *              the desired frequency.
-   * \param dur The duration of the tone, used by `timer()`.
-   *
-   * \details
-   * A tone is played for the specified duration, or until replaced by another
-   * tone or stopped using `noTone()`.
-   *
-   * The tone's frequency is determined by the specified count, which is loaded
-   * into the timer/counter that generates the tone. A desired frequency can be
-   * converted into the required count value using the `freq()` function.
-   *
-   * The duration value is the number of times the `timer()` function must be
-   * called before the tone is stopped.
-   *
-   * \see freq() timer() noTone()
-   */
-  static void tone(uint16_t freq, uint16_t dur);
+    /** \brief
+     * Play a tone for a given duration.
+     *
+     * \param count The count to be loaded into the timer/counter to play
+     *              the desired frequency.
+     * \param dur The duration of the tone, used by `timer()`.
+     *
+     * \details
+     * A tone is played for the specified duration, or until replaced by another
+     * tone or stopped using `noTone()`.
+     *
+     * The tone's frequency is determined by the specified count, which is loaded
+     * into the timer/counter that generates the tone. A desired frequency can be
+     * converted into the required count value using the `freq()` function.
+     *
+     * The duration value is the number of times the `timer()` function must be
+     * called before the tone is stopped.
+     *
+     * \see freq() timer() noTone()
+     */
+    static void tone(const uint16_t freq, const uint16_t dur);
+    static void tone(const uint16_t *tones);
+    static void tone2(const uint16_t freq, const uint16_t dur);
+    static void tone2(const uint16_t *tones);
 
-  static void tone(uint16_t *tones);
+    /** \brief
+     * Handle the duration that a tone plays for.
+     *
+     * \details
+     * This function must be called at a constant interval, which would normally
+     * be once per frame, in order to stop a tone after the desired tone duration
+     * has elapsed.
+     *
+     * If the value of the `duration` variable is not 0, it will be decremented.
+     * When the `duration` variable is decremented to 0, a playing tone will be
+     * stopped.
+     */
+    static void timer();
+    static void noTone();
+    static void timer2();
+    static void noTone2();
 
-  /** \brief
-   * Handle the duration that a tone plays for.
-   *
-   * \details
-   * This function must be called at a constant interval, which would normally
-   * be once per frame, in order to stop a tone after the desired tone duration
-   * has elapsed.
-   *
-   * If the value of the `duration` variable is not 0, it will be decremented.
-   * When the `duration` variable is decremented to 0, a playing tone will be
-   * stopped.
-   */
-  static void timer();
-
-  static uint8_t readEEPROM(uint16_t address);
-  static void writeEEPROM(uint16_t address, uint8_t value);
+    static uint8_t readEEPROM(uint16_t address);
+    static void readEEPROM(uint16_t address, void *data_dest, size_t size);
+    static void writeEEPROM(uint16_t address, uint8_t value);
+    static void writeEEPROM(uint16_t address, void *data_source, size_t size);
 
   protected:
     // internals

@@ -13,9 +13,3 @@ This is using a modified version of the Arduboy2 library, with the code running 
 http://www.nxlab.fer.hr/fpgarduino/ <br />
 https://github.com/menloparkinnovation/f32c <br />
 https://github.com/nhasbun/de10nano_vgaHdmi_chip
-
-All of my customisations are made to the 32K/100MHz RISC-V variation of the core, with serial RX/TX mapped to USER_IN[0] and USER_OUT[1] of the MiSTer (aka. SCL / SDA on the DE10-Nano's Arduino header) which are then connected to one of these USB-to-serial cables:
-
-https://www.adafruit.com/product/954
-
-There is a corresponding Arduino IDE boards package which allows uploading new sketches over this serial connection, but it is also possible to just upload pre-complied hex files to the bootloader without the Arduino IDE - for example using 'Send File' in TeraTerm.

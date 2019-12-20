@@ -42,7 +42,7 @@ entity glue is
     C_clk_freq: integer := 100;
 
     -- SoC configuration options (32K in this configuration)
-    C_bram_size: integer := 32;
+    C_bram_size: integer := 64;
 
     -- Debugging
     C_debug: boolean := false
@@ -55,13 +55,15 @@ entity glue is
     rs232_rxd:   in std_logic;
     led:        out std_logic;
     buttons:     in std_logic_vector(5 downto 0);
-    audio:      out std_logic;
+    audio1:     out std_logic;
+    audio2:     out std_logic;
     sd_rd:      out std_logic;
     sd_wr:      out std_logic;
     glue_wr:    out std_logic;
     address:    out std_logic_vector(8 downto 0);
     buffer_din: out std_logic_vector(7 downto 0);
     buffer_dout: in std_logic_vector(7 downto 0);
+    random_dout: in std_logic_vector(7 downto 0);
     sd_ack:      in std_logic;
     HSync:      out std_logic;
     VSync:      out std_logic;
@@ -80,8 +82,10 @@ architecture Behavioral of glue is
     reset:       in std_logic;
     oled_dc:     in std_logic;
     oled_clk:    in std_logic;
+    invert:      in std_logic;
     oled_data:   in std_logic_vector(7 downto 0);
     buffer_din: out std_logic_vector(7 downto 0);
+    music_data: out std_logic_vector(7 downto 0);
     hsync:      out std_logic;
     vsync:      out std_logic;
     hblank:     out std_logic;
@@ -98,10 +102,23 @@ architecture Behavioral of glue is
     );
     end component;
 
-    signal dc:       std_logic;
-    signal clk:      std_logic;
-    signal data:     std_logic_vector(7 downto 0);
-    signal fullnote: std_logic_vector(5 downto 0);
+    component music_latched
+    port (
+    clk:        in std_logic;
+    clk100:     in std_logic;
+    music_data: in std_logic_vector(7 downto 0);
+    latch:      in std_logic;
+    speaker:   out std_logic
+    );
+    end component;
+
+    signal dc:        std_logic;
+    signal clk:       std_logic;
+    signal invert:    std_logic;
+    signal latch:     std_logic;
+    signal data:      std_logic_vector(7 downto 0);
+    signal music_din: std_logic_vector(7 downto 0);
+    signal fullnote:  std_logic_vector(5 downto 0);
 
 begin
 
@@ -112,8 +129,10 @@ begin
     reset      => lock,
     oled_dc    => dc,
     oled_clk   => clk,
+    invert     => invert,
     oled_data  => data,
     buffer_din => buffer_din,
+    music_data => music_din,
     hsync      => HSync,
     vsync      => VSync,
     hblank     => HBlank,
@@ -121,11 +140,20 @@ begin
     pixelValue => pixelValue
     );
 
-    sound: music
+    sound1: music
     port map (
     clk      => clk_25m,
     fullnote => fullnote,
-    speaker  => audio
+    speaker  => audio1
+    );
+
+    sound2: music_latched
+    port map (
+    clk        => clk_25m,
+    clk100     => clk_100m,
+    music_data => music_din,
+    latch      => latch,
+    speaker    => audio2
     );
 
     -- generic BRAM glue
@@ -138,16 +166,17 @@ begin
     )
     port map (
     clk => clk_100m,
-    sio_rxd(0) => rs232_rxd, -- PIN_AG11 USER_IO[0] (Arduino SCL)
-    sio_txd(0) => rs232_txd, -- PIN_AH9  USER_IO[1] (Arduino SDA)
+    sio_rxd(0) => rs232_rxd,
+    sio_txd(0) => rs232_txd,
     sio_break(0) => open, spi_miso => "",
-    simple_in(31 downto 15) => open,
+    simple_in(31 downto 23) => open,
+    simple_in(22 downto 15) => random_dout,
     simple_in(14 downto 7) => buffer_dout,
     simple_in(6) => sd_ack, simple_in(5 downto 0) => buttons,
     simple_out(31) => sd_rd, simple_out(30) => sd_wr,
     simple_out(29) => glue_wr, simple_out(28 downto 23) => fullnote,
-    simple_out(22) => dc, simple_out(21) => clk,
-    simple_out(20 downto 18) => open,
+    simple_out(22) => dc, simple_out(21) => clk, simple_out(20) => invert,
+    simple_out(19) => latch, simple_out(18) => open,
     simple_out(17 downto 10) => data,
     simple_out(9 downto 1) => address,
     simple_out(0) => led -- PIN_Y15 LED_USER (GPIO_1[0])

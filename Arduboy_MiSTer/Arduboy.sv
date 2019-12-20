@@ -128,16 +128,16 @@ assign VGA_SL    = 0;
 assign LED_POWER = 0;
 assign LED_DISK  = 0;
 assign BUTTONS   = 0;
+assign USER_OUT  = 0; // was USER_OUT[0] = 1
 assign AUDIO_S   = 0;
-assign AUDIO_MIX = 0;
-assign AUDIO_L   = (audio) ? 16'h7FFF : 16'd0;
-assign AUDIO_R   = AUDIO_L;
+assign AUDIO_MIX = 3;
+assign AUDIO_L   = (audio1) ? 16'h7FFF : 16'd0;
+assign AUDIO_R   = (audio2) ? 16'h7FFF : 16'd0;
 assign ADC_BUS   = 'Z;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_RD, DDRAM_DIN, DDRAM_BE, DDRAM_WE} = 0;
 assign {SDRAM_CLK, SDRAM_CKE, SDRAM_A, SDRAM_BA, SDRAM_DQ, SDRAM_DQML, SDRAM_DQMH, SDRAM_nCS, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nWE} = 'Z;
-assign {UART_RTS, UART_TXD, UART_DTR} = 0;
-assign USER_OUT[0] = 1;
+assign {UART_RTS, UART_DTR} = 0; // UART_TXD
 
 `include "build_id.v"
 localparam CONF_STR =
@@ -167,9 +167,37 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
     .sd_buff_wr(sd_buff_wr)
 );
 
+wire [3:0] R,G,B;
+wire VSync,HSync,HBlank,VBlank;
+
+video_cleaner video_cleaner
+(
+    .clk_vid(clk_100m),
+    .ce_pix(clk_25m),
+
+    .R({4{pixelValue}}),
+    .G({4{pixelValue}}),
+    .B({4{pixelValue}}),
+
+    .HSync(hsync),
+    .VSync(vsync),
+    .HBlank(hblank),
+    .VBlank(vblank),
+
+    .VGA_R(R),
+    .VGA_G(G),
+    .VGA_B(B),
+    .VGA_VS(VSync),
+    .VGA_HS(HSync),
+
+    .HBlank_out(HBlank),
+    .VBlank_out(VBlank)
+);
+
 video_mixer #(.LINE_LENGTH(800), .HALF_DEPTH(1)) video_mixer
 (
     .*,
+
     .clk_vid(clk_100m),
     .ce_pix(clk_25m),
     .ce_pix_out(CE_PIXEL),
@@ -178,16 +206,7 @@ video_mixer #(.LINE_LENGTH(800), .HALF_DEPTH(1)) video_mixer
     .scanlines(0),
     .hq2x(0),
     .mono(1),
-    .gamma_bus(),
-
-    .R({4{pixelValue}}),
-    .G({4{pixelValue}}),
-    .B({4{pixelValue}}),
-
-    .HSync(HSync),
-    .VSync(VSync),
-    .HBlank(HBlank),
-    .VBlank(VBlank)
+    .gamma_bus()
 );
 
 wire clk_100m, clk_25m, lock;
@@ -201,10 +220,20 @@ pll_50m pll_50m
     .locked(lock)
 );
 
-wire HSync, VSync;
-wire HBlank, VBlank;
+wire [7:0] random_dout;
+
+unstable_counters unstable_counters
+(
+    .clk(CLK_50M),
+    .rst(RESET),
+    .dat(random_dout)
+);
+
+wire hsync, vsync;
+wire hblank, vblank;
 wire pixelValue;
-wire audio;
+wire audio1;
+wire audio2;
 wire glue_wr;
 wire [8:0] address;
 wire [7:0] buffer_din;
@@ -215,22 +244,24 @@ glue glue
     .clk_100m(clk_100m),
     .clk_25m(clk_25m),
     .lock(lock),
-    .rs232_txd(USER_OUT[1]),
-    .rs232_rxd(USER_IN[0]),
+    .rs232_txd(UART_TXD), // was USER_OUT[1]
+    .rs232_rxd(UART_RXD), // was USER_IN[0]
     .led(LED_USER),
     .buttons(joystick[5:0]),
-    .audio(audio),
+    .audio1(audio1),
+    .audio2(audio2),
     .sd_rd(sd_rd_in),
     .sd_wr(sd_wr_in),
     .glue_wr(glue_wr),
     .address(address),
     .buffer_din(buffer_din),
     .buffer_dout(buffer_dout),
+    .random_dout(random_dout),
     .sd_ack(sd_ack),
-    .hsync(HSync),
-    .vsync(VSync),
-    .hblank(HBlank),
-    .vblank(VBlank),
+    .hsync(hsync),
+    .vsync(vsync),
+    .hblank(hblank),
+    .vblank(vblank),
     .pixelValue(pixelValue)
 );
 

@@ -179,11 +179,13 @@ int Arduboy2Base::cpuLoad()
   return lastFrameDurationMs*100 / eachFrameMillis;
 }
 
+static volatile uint32_t *simple_in  = (uint32_t *)0xFFFFFF00;
+
 unsigned long Arduboy2Base::generateRandomSeed()
 {
   unsigned long seed;
 
-  seed = random();
+  seed = (*simple_in >> 15);
 
   return seed;
 }
