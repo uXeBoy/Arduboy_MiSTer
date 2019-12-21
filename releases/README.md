@@ -14,6 +14,10 @@ and 'Circuit Dude' by Jonathan Holmes:
 
 http://www.crait.net/
 
+and 'Ardynia' by Matt Greer:
+
+https://www.city41.games/ardynia/help
+
 I did initially look at basing this core on Alorium Technology's implementation of an ATmega328 microcontroller on an FPGA - but part of it is closed-source and unfortunately only compatible with the Intel MAX 10, not the Cyclone V:
 
 https://github.com/AloriumTechnology/XLR8Core/issues/1
