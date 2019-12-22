@@ -8,7 +8,7 @@ The hex files still need to be uploaded to the core over serial right now, but t
 
 The test hex files I have included are 'The Curse of AstaroK' by Press Play On Tape (see the GitHub page for gameplay instructions!):
 
-https://github.com/Press-Play-On-Tape/The-Curse-Of-AstaroK
+https://github.com/Press-Play-On-Tape/The-Curse-Of-AstaroK [(LICENSE)](https://github.com/Press-Play-On-Tape/The-Curse-Of-AstaroK/blob/master/LICENSE)
 
 and 'Circuit Dude' by Jonathan Holmes:
 
@@ -16,11 +16,11 @@ http://www.crait.net/
 
 and 'Ardynia' by Matt Greer:
 
-https://www.city41.games/ardynia/help
+https://www.city41.games/ardynia/help [(LICENSE)](https://github.com/city41/ardynia/blob/master/LICENSE)
 
 and 'Rooftop Rescue' by Bert Veer:
 
-https://github.com/BertVeer/Rooftop
+https://github.com/BertVeer/Rooftop [(LICENSE)](https://github.com/BertVeer/Rooftop/blob/master/LICENSE)
 
 I did initially look at basing this core on Alorium Technology's implementation of an ATmega328 microcontroller on an FPGA - but part of it is closed-source and unfortunately only compatible with the Intel MAX 10, not the Cyclone V:
 
