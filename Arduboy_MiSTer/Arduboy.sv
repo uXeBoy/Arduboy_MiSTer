@@ -128,26 +128,34 @@ assign VGA_SL    = 0;
 assign LED_POWER = 0;
 assign LED_DISK  = 0;
 assign BUTTONS   = 0;
-assign USER_OUT  = 0; // was USER_OUT[0] = 1
+assign USER_OUT  = 0;
 assign AUDIO_S   = 0;
 assign AUDIO_MIX = 3;
-assign AUDIO_L   = (audio1) ? 16'h7FFF : 16'd0;
-assign AUDIO_R   = (audio2) ? 16'h7FFF : 16'd0;
+assign AUDIO_L   = (audio1 && !busy) ? 16'h7FFF : 16'd0;
+assign AUDIO_R   = (audio2 && !busy) ? 16'h7FFF : 16'd0;
 assign ADC_BUS   = 'Z;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_RD, DDRAM_DIN, DDRAM_BE, DDRAM_WE} = 0;
 assign {SDRAM_CLK, SDRAM_CKE, SDRAM_A, SDRAM_BA, SDRAM_DQ, SDRAM_DQML, SDRAM_DQMH, SDRAM_nCS, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nWE} = 'Z;
-assign {UART_RTS, UART_DTR} = 0; // UART_TXD
+assign {UART_RTS, UART_DTR} = 0;
 
 `include "build_id.v"
 localparam CONF_STR =
 {
     "Arduboy;;",
+    "S0,HEX;",
+    "R0,Reset;",
     "J1,A,B;",
     "V,v",`BUILD_DATE
 };
 
 wire [31:0] joystick;
+wire [31:0] status;
+
+reg [8:0] sd_lba;
+always @(posedge clk_100m) if (lba) sd_lba <= address;
+wire [8:0] busy_lba;
+assign busy_lba = (busy) ? char_count[17:9] : sd_lba;
 
 hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 (
@@ -155,8 +163,9 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
     .HPS_BUS(HPS_BUS),
     .conf_str(CONF_STR),
     .joystick_0(joystick),
+    .status(status),
 
-    .sd_lba(0),
+    .sd_lba({23'd0, busy_lba}),
     .sd_rd(sd_rd),
     .sd_wr(sd_wr),
     .sd_ack(sd_ack),
@@ -170,14 +179,19 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 wire [3:0] R,G,B;
 wire VSync,HSync,HBlank,VBlank;
 
+wire [3:0] busyR,busyG,busyB;
+assign busyR = (busy) ? {4{char_count[14]}} : {4{pixelValue}};
+assign busyG = (busy) ? {4{char_count[13]}} : {4{pixelValue}};
+assign busyB = (busy) ? {4{char_count[12]}} : {4{pixelValue}};
+
 video_cleaner video_cleaner
 (
     .clk_vid(clk_100m),
     .ce_pix(clk_25m),
 
-    .R({4{pixelValue}}),
-    .G({4{pixelValue}}),
-    .B({4{pixelValue}}),
+    .R(busyR),
+    .G(busyG),
+    .B(busyB),
 
     .HSync(hsync),
     .VSync(vsync),
@@ -205,19 +219,18 @@ video_mixer #(.LINE_LENGTH(800), .HALF_DEPTH(1)) video_mixer
     .scandoubler(0),
     .scanlines(0),
     .hq2x(0),
-    .mono(1),
+    .mono(~busy),
     .gamma_bus()
 );
 
-wire clk_100m, clk_25m, lock;
+wire clk_100m, clk_25m;
 
 pll_50m pll_50m
 (
     .refclk(CLK_50M),
     .rst(RESET),
     .outclk_0(clk_100m),
-    .outclk_1(clk_25m),
-    .locked(lock)
+    .outclk_1(clk_25m)
 );
 
 wire [7:0] random_dout;
@@ -229,9 +242,57 @@ unstable_counters unstable_counters
     .dat(random_dout)
 );
 
+reg  [7:0] tx_data_r;
+reg  [8:0] lba_count;
+reg  [17:0] char_count;
+reg  busy;
+reg  dvalid;
+wire sync;
+wire tx;
+wire tx_rd;
+
+UART UART
+(
+    .CLK(CLK_50M),
+    .RST(status[0]),
+    .SYNC(sync),
+    .UART_TXD(tx),
+    .DIN(tx_data_r),
+    .DIN_VLD(dvalid),
+    .DIN_RDY(tx_rd)
+);
+
+always @(posedge clk_25m)
+begin
+  if (status[0]) begin
+    busy <= 1'b1;
+    dvalid <= 1'b0;
+    char_count <= 502;
+    lba_count <= 502;
+  end
+  else if (busy) begin
+    if (buffer_dout == 8'h1A) begin // End of File
+      busy <= 1'b0;
+      dvalid <= 1'b0;
+      char_count <= 0;
+    end
+    else if (tx_rd) begin
+      if (char_count < 512) tx_data_r <= char_count - 454; // ASCII 0-9
+      else tx_data_r <= buffer_dout;
+      dvalid <= 1'b1;
+      char_count <= char_count + 1'b1;
+      lba_count <= lba_count + 1'b1;
+    end
+    else begin
+      dvalid <= 1'b0;
+    end
+  end
+end
+
 wire hsync, vsync;
 wire hblank, vblank;
 wire pixelValue;
+wire lba;
 wire audio1;
 wire audio2;
 wire glue_wr;
@@ -243,14 +304,16 @@ glue glue
 (
     .clk_100m(clk_100m),
     .clk_25m(clk_25m),
-    .lock(lock),
-    .rs232_txd(UART_TXD), // was USER_OUT[1]
-    .rs232_rxd(UART_RXD), // was USER_IN[0]
+    .reset(status[0]),
+    .rs232_rxd(tx),
+    .rs232_txd(UART_TXD),
     .led(LED_USER),
     .buttons(joystick[5:0]),
     .audio1(audio1),
     .audio2(audio2),
-    .sd_rd(sd_rd_in),
+    .lba(lba),
+    .sync(sync),
+    .sd_rd(glue_rd_in),
     .sd_wr(sd_wr_in),
     .glue_wr(glue_wr),
     .address(address),
@@ -267,13 +330,18 @@ glue glue
 
 reg  sd_rd;
 reg  sd_wr;
-wire sd_rd_in;
+wire glue_rd_in;
 wire sd_wr_in;
 wire sd_ack;
 wire [8:0] sd_buff_addr;
 wire [7:0] sd_buff_dout;
 wire [7:0] sd_buff_din;
 wire sd_buff_wr;
+
+wire [8:0] busy_addr;
+assign busy_addr = (busy) ? char_count[8:0] : address;
+wire sd_rd_in;
+assign sd_rd_in = (busy) ? (lba_count == 511) : glue_rd_in;
 
 sdbuf buffer
 (
@@ -284,7 +352,7 @@ sdbuf buffer
     .q_a(sd_buff_din),
 
     .clock_b(clk_100m),
-    .address_b(address),
+    .address_b(busy_addr),
     .data_b(buffer_din),
     .wren_b(glue_wr),
     .q_b(buffer_dout)

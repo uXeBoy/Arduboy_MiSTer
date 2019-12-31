@@ -1010,6 +1010,7 @@ class Arduboy2Base : public Arduboy2Core
    * \see getBuffer()
    */
   static uint8_t sBuffer[(HEIGHT*WIDTH)/8];
+  uint8_t eachFrameMillis;
 
  protected:
   // functions passed to bootLogoShell() to draw the logo
@@ -1025,7 +1026,6 @@ class Arduboy2Base : public Arduboy2Core
   uint8_t previousButtonState;
 
   // For frame funcions
-  uint8_t eachFrameMillis;
   uint8_t thisFrameStart;
   bool justRendered;
   uint8_t lastFrameDurationMs;

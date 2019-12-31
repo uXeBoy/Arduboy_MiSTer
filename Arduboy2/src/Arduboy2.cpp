@@ -140,11 +140,13 @@ void Arduboy2Base::bootLogoShell(void (*drawLogo)(int16_t))
 void Arduboy2Base::setFrameRate(uint8_t rate)
 {
   eachFrameMillis = 1000 / rate;
+  setFrameMillis(eachFrameMillis);
 }
 
 void Arduboy2Base::setFrameDuration(uint8_t duration)
 {
   eachFrameMillis = duration;
+  setFrameMillis(eachFrameMillis);
 }
 
 bool Arduboy2Base::everyXFrames(uint8_t frames)

@@ -6,6 +6,12 @@ set_global_assignment -name VERILOG_FILE music.v
 set_global_assignment -name VERILOG_FILE music_latched.v
 set_global_assignment -name VERILOG_FILE ring_counter.v
 set_global_assignment -name VERILOG_FILE unstable_counters.v
+set_global_assignment -name VHDL_FILE uart.vhd
+set_global_assignment -name VHDL_FILE uart_clk_div.vhd
+set_global_assignment -name VHDL_FILE uart_debouncer.vhd
+set_global_assignment -name VHDL_FILE uart_parity.vhd
+set_global_assignment -name VHDL_FILE uart_rx.vhd
+set_global_assignment -name VHDL_FILE uart_tx.vhd
 set_global_assignment -name VHDL_FILE cpu/alu.vhd
 set_global_assignment -name VHDL_FILE cpu/debug.vhd
 set_global_assignment -name VHDL_FILE cpu/defs_f32c.vhd

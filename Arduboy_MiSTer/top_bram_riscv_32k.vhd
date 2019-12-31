@@ -50,13 +50,15 @@ entity glue is
     port (
     clk_100m:    in std_logic;
     clk_25m:     in std_logic;
-    lock:        in std_logic;
+    reset:       in std_logic;
     rs232_txd:  out std_logic;
     rs232_rxd:   in std_logic;
     led:        out std_logic;
     buttons:     in std_logic_vector(5 downto 0);
     audio1:     out std_logic;
     audio2:     out std_logic;
+    lba:        out std_logic;
+    sync:        in std_logic;
     sd_rd:      out std_logic;
     sd_wr:      out std_logic;
     glue_wr:    out std_logic;
@@ -79,7 +81,6 @@ architecture Behavioral of glue is
     port (
     clock:       in std_logic;
     clock100:    in std_logic;
-    reset:       in std_logic;
     oled_dc:     in std_logic;
     oled_clk:    in std_logic;
     invert:      in std_logic;
@@ -126,7 +127,6 @@ begin
     port map (
     clock      => clk_25m,
     clock100   => clk_100m,
-    reset      => lock,
     oled_dc    => dc,
     oled_clk   => clk,
     invert     => invert,
@@ -165,21 +165,22 @@ begin
     C_debug => C_debug
     )
     port map (
-    clk => clk_100m,
+    clk => clk_100m, reset => reset,
     sio_rxd(0) => rs232_rxd,
     sio_txd(0) => rs232_txd,
-    sio_break(0) => open, spi_miso => "",
+    sio_break(0) => open, spi_miso => "", sync => sync,
     simple_in(31 downto 23) => open,
     simple_in(22 downto 15) => random_dout,
-    simple_in(14 downto 7) => buffer_dout,
-    simple_in(6) => sd_ack, simple_in(5 downto 0) => buttons,
-    simple_out(31) => sd_rd, simple_out(30) => sd_wr,
-    simple_out(29) => glue_wr, simple_out(28 downto 23) => fullnote,
-    simple_out(22) => dc, simple_out(21) => clk, simple_out(20) => invert,
-    simple_out(19) => latch, simple_out(18) => open,
-    simple_out(17 downto 10) => data,
-    simple_out(9 downto 1) => address,
-    simple_out(0) => led -- PIN_Y15 LED_USER (GPIO_1[0])
+    simple_in(14) => sd_ack, simple_in(13 downto 8) => buttons,
+    simple_in(7 downto 0) => buffer_dout,
+    simple_out(31) => sd_wr, simple_out(30) => glue_wr,
+    simple_out(29 downto 24) => fullnote,
+    simple_out(23) => dc, simple_out(22) => clk,
+    simple_out(21) => invert, simple_out(20) => latch,
+    simple_out(19 downto 12) => data,
+    simple_out(11) => led, -- PIN_Y15 LED_USER (GPIO_1[0])
+    simple_out(10) => sd_rd, simple_out(9) => lba,
+    simple_out(8 downto 0) => address
     );
 
 end Behavioral;

@@ -44,17 +44,18 @@
 #define WIDTH 128 /**< The width of the display in pixels */
 #define HEIGHT 64 /**< The height of the display in pixels */
 
-#define SD_ACK_MASK    0x00000040
-#define SD_RD_MASK     0x80000000
-#define SD_WR_MASK     0x40000000
-#define GLUE_WR_MASK   0x20000000
-#define FULLNOTE_MASK  0x1F800000
-#define DC_MASK        0x00400000
-#define CLK_MASK       0x00200000
-#define INVERT_MASK    0x00100000
-#define LATCH_MASK     0x00080000
-#define DATA_MASK      0x0003FC00
-#define ADDRESS_MASK   0x000003FE
+#define SD_ACK_MASK    0x00004000
+#define SD_WR_MASK     0x80000000
+#define GLUE_WR_MASK   0x40000000
+#define FULLNOTE_MASK  0x3F000000
+#define DC_MASK        0x00800000
+#define CLK_MASK       0x00400000
+#define INVERT_MASK    0x00200000
+#define LATCH_MASK     0x00100000
+#define DATA_MASK      0x000FF000
+#define SD_RD_MASK     0x00000400
+#define LBA_MASK       0x00000200
+#define ADDRESS_MASK   0x000001FF
 
 #define NOTE_REST  0
 #define NOTE_A2    1
@@ -373,6 +374,7 @@ class Arduboy2Core
     static uint16_t duration2;
     static bool tonesPlaying2;
     static uint16_t toneSequence2[];
+    static uint8_t eachFrameMillis;
 
     /** \brief
      * Play a tone for a given duration.
@@ -415,6 +417,7 @@ class Arduboy2Core
     static void noTone();
     static void timer2();
     static void noTone2();
+    static void setFrameMillis(uint8_t value);
 
     static uint8_t readEEPROM(uint16_t address);
     static void readEEPROM(uint16_t address, void *data_dest, size_t size);

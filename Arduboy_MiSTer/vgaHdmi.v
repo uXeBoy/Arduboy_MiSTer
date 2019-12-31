@@ -20,7 +20,6 @@ Editor : sublime text3, tab size (2)
 
 module vgaHdmi(
   input clock, clock100,
-  input reset,
   input oled_dc,
   input oled_clk,
   input invert,
@@ -88,9 +87,6 @@ assign bytePosition = pixelZ + pixelX;
 assign pixelValue = (dataEnable) ? ((invertLatched) ? ~tempByte[bitPosition] : tempByte[bitPosition]) : 1'b0;
 assign dataEnable = (pixelH > 0 && pixelH < 640 && pixelV_offset > 0 && pixelV_offset < 320) ? 1'b1 : 1'b0;
 
-wire reset_n;
-assign reset_n = ~reset;
-
 reg [9:0] pixelH, pixelV, pixelV_offset; // estado interno de pixeles del modulo
 
 initial begin
@@ -103,15 +99,7 @@ end
 
 // Manejo de Pixeles y Sincronizacion
 
-always @(posedge clock or posedge reset_n) begin
-  if(reset_n) begin
-    hsync  <= 0;
-    vsync  <= 0;
-    pixelH <= 0;
-    pixelV <= 0;
-    pixelV_offset <= 0;
-  end
-  else begin
+always @(posedge clock) begin
     // Display Horizontal
     if(pixelH==0 && pixelV!=524) begin
       pixelH <= pixelH + 1'b1;
@@ -147,7 +135,6 @@ always @(posedge clock or posedge reset_n) begin
       vsync <= 1;
     else
       vsync <= 0;
-  end
 end
 
 endmodule
