@@ -1,6 +1,8 @@
 OK - now ready to release an alpha work-in-progress core that can run games!
 
-HEX files can now be selected from the F12 menu, then just reset the core (also from the F12 menu) and the core's bootloader will transfer and run that HEX file at startup (might need more than one reset, still slightly buggy).
+HEX files can now be selected from the F12 menu, then just reset the core (also from the F12 menu) and the core's bootloader will receive and run that HEX file at startup (might need more than one reset, still slightly buggy). **The flashing colours are sort of the 'loading screen' - you should see the disk LED light up, and see the flashing colours for a while (10-20 seconds maybe?) and then the game starts... at least it does on my DE10-Nano?**
+
+(PS. the first 512 bytes of the HEX files are an empty block used for EEPROM storage)
 
 (Note: this is not a 1:1 FPGA based emulation of the ATmega32U4 microcontroller used in the Arduboy - at this stage it is more a 'simulation' of an Arduboy, using a RISC-V 'soft' microcontroller and a modified version of the Arduboy libraries to re-compile games for this platform... so, existing pre-compiled Arduboy hex files are not going to run on this right now! But the majority of Arduboy games are open-source anyway, so it is not a big deal to make any necessary adjustments to the code and then re-compile a compatible hex file.)
 
