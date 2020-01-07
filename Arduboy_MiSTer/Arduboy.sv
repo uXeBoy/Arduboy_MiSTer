@@ -152,10 +152,11 @@ localparam CONF_STR =
 wire [31:0] joystick;
 wire [31:0] status;
 
+wire lba;
 reg [8:0] sd_lba;
 always @(posedge clk_100m) if (lba) sd_lba <= address;
 wire [8:0] busy_lba;
-assign busy_lba = (busy) ? char_count[17:9] : sd_lba;
+assign busy_lba = (busy) ? lba_count : sd_lba;
 
 hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 (
@@ -165,7 +166,7 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
     .joystick_0(joystick),
     .status(status),
 
-    .sd_lba({23'd0, busy_lba}),
+    .sd_lba(busy_lba),
     .sd_rd(sd_rd),
     .sd_wr(sd_wr),
     .sd_ack(sd_ack),
@@ -242,13 +243,8 @@ unstable_counters unstable_counters
     .dat(random_dout)
 );
 
-reg  [7:0] tx_data_r;
-reg  [8:0] lba_count;
-reg  [17:0] char_count;
-reg  busy;
-reg  dvalid;
-wire sync;
-wire tx;
+reg [7:0] tx_data_r;
+reg dvalid;
 wire tx_rd;
 
 UART UART
@@ -262,26 +258,37 @@ UART UART
     .DIN_RDY(tx_rd)
 );
 
+reg busy;
+reg [8:0] lba_count;
+reg [17:0] char_count;
+
+always @(posedge clk_100m)
+begin
+  if (status[0]) begin
+    lba_count <= 0;
+  end
+  else if (busy) begin
+    if (risingSD_RD) lba_count <= lba_count + 1'b1;
+  end
+end
+
 always @(posedge clk_25m)
 begin
   if (status[0]) begin
     busy <= 1'b1;
     dvalid <= 1'b0;
     char_count <= 502;
-    lba_count <= 502;
   end
   else if (busy) begin
     if (buffer_dout == 8'h1A) begin // End of File
       busy <= 1'b0;
       dvalid <= 1'b0;
-      char_count <= 0;
     end
-    else if (tx_rd) begin
+    else if (tx_rd && !dvalid) begin
       if (char_count < 512) tx_data_r <= char_count - 454; // ASCII 0-9
       else tx_data_r <= buffer_dout;
       dvalid <= 1'b1;
       char_count <= char_count + 1'b1;
-      lba_count <= lba_count + 1'b1;
     end
     else begin
       dvalid <= 1'b0;
@@ -289,16 +296,20 @@ begin
   end
 end
 
-wire hsync, vsync;
-wire hblank, vblank;
-wire pixelValue;
-wire lba;
+wire tx;
 wire audio1;
 wire audio2;
+wire sync;
+wire glue_rd_in;
+wire sd_wr_in;
 wire glue_wr;
 wire [8:0] address;
 wire [7:0] buffer_din;
 wire [7:0] buffer_dout;
+wire sd_ack;
+wire hsync, vsync;
+wire hblank, vblank;
+wire pixelValue;
 
 glue glue
 (
@@ -328,20 +339,12 @@ glue glue
     .pixelValue(pixelValue)
 );
 
-reg  sd_rd;
-reg  sd_wr;
-wire glue_rd_in;
-wire sd_wr_in;
-wire sd_ack;
+wire sd_buff_wr;
 wire [8:0] sd_buff_addr;
 wire [7:0] sd_buff_dout;
 wire [7:0] sd_buff_din;
-wire sd_buff_wr;
-
 wire [8:0] busy_addr;
 assign busy_addr = (busy) ? char_count[8:0] : address;
-wire sd_rd_in;
-assign sd_rd_in = (busy) ? (lba_count == 511) : glue_rd_in;
 
 sdbuf buffer
 (
@@ -358,10 +361,14 @@ sdbuf buffer
     .q_b(buffer_dout)
 );
 
+reg sd_rd;
+reg sd_wr;
 reg delaySD_RD, delaySD_WR;
 wire risingSD_RD, risingSD_WR;
 assign risingSD_RD = (sd_rd_in & ~delaySD_RD);
 assign risingSD_WR = (sd_wr_in & ~delaySD_WR);
+wire sd_rd_in;
+assign sd_rd_in = (busy) ? (char_count[8:0] == 511) : glue_rd_in;
 
 always @(posedge clk_100m)
 begin
