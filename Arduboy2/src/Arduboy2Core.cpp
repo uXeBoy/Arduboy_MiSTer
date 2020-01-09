@@ -19,7 +19,7 @@ void Arduboy2Core::setFrameMillis(uint8_t value)
 
 uint16_t Arduboy2Core::duration = 0;
 bool Arduboy2Core::tonesPlaying = false;
-uint16_t Arduboy2Core::toneSequence[3];
+uint16_t Arduboy2Core::toneSequence[7];
 static uint16_t *tonesStart = 0;
 static uint16_t *tonesIndex = 0;
 
@@ -28,6 +28,19 @@ void Arduboy2Core::tone(const uint16_t freq, const uint16_t dur)
   toneSequence[0] = freq;
   toneSequence[1] = dur;
   toneSequence[2] = TONES_END;
+
+  tone(toneSequence);
+}
+
+void Arduboy2Core::tone(int freq1, int dur1, int freq2, int dur2, int freq3, int dur3)
+{
+  toneSequence[0] = freq1;
+  toneSequence[1] = dur1;
+  toneSequence[2] = freq2;
+  toneSequence[3] = dur2;
+  toneSequence[4] = freq3;
+  toneSequence[5] = dur3;
+  toneSequence[6] = TONES_END;
 
   tone(toneSequence);
 }

@@ -398,6 +398,7 @@ class Arduboy2Core
      */
     static void tone(const uint16_t freq, const uint16_t dur);
     static void tone(const uint16_t *tones);
+    static void tone(int freq1, int dur1, int freq2, int dur2, int freq3, int dur3);
     static void tone2(const uint16_t freq, const uint16_t dur);
     static void tone2(const uint16_t *tones);
 

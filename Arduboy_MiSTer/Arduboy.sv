@@ -250,7 +250,7 @@ wire tx_rd;
 UART UART
 (
     .CLK(CLK_50M),
-    .RST(status[0]),
+    .RST(RESET),
     .SYNC(sync),
     .UART_TXD(tx),
     .DIN(tx_data_r),
@@ -264,7 +264,7 @@ reg [17:0] char_count;
 
 always @(posedge clk_100m)
 begin
-  if (status[0]) begin
+  if (status[0] || RESET) begin
     lba_count <= 0;
   end
   else if (busy) begin
@@ -274,7 +274,7 @@ end
 
 always @(posedge clk_25m)
 begin
-  if (status[0]) begin
+  if (status[0] || RESET) begin
     busy <= 1'b1;
     dvalid <= 1'b0;
     char_count <= 502;
@@ -315,7 +315,7 @@ glue glue
 (
     .clk_100m(clk_100m),
     .clk_25m(clk_25m),
-    .reset(status[0]),
+    .reset(status[0] || RESET),
     .rs232_rxd(tx),
     .rs232_txd(UART_TXD),
     .led(LED_USER),
