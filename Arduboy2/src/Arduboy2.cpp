@@ -204,7 +204,6 @@ void Arduboy2Base::clear()
   fillScreen(BLACK);
 }
 
-// For reference, this is the C++ equivalent
 void Arduboy2Base::drawPixel(int16_t x, int16_t y, uint8_t color)
 {
   #ifdef PIXEL_SAFE_MODE
@@ -214,14 +213,12 @@ void Arduboy2Base::drawPixel(int16_t x, int16_t y, uint8_t color)
   }
   #endif
 
-  uint16_t row_offset;
-  uint8_t bit;
-
-  bit = 1 << (y & 7);
-  row_offset = (y & 0xF8) * WIDTH / 8 + x;
-  uint8_t data = sBuffer[row_offset] | bit;
-  if (!color) data ^= bit;
-  sBuffer[row_offset] = data;
+  switch (color)
+  {
+    case WHITE:  sBuffer[x + (y/8)*WIDTH] |=  (1 << (y&7)); break;
+    case BLACK:  sBuffer[x + (y/8)*WIDTH] &= ~(1 << (y&7)); break;
+    case INVERT: sBuffer[x + (y/8)*WIDTH] ^=  (1 << (y&7)); break;
+  }
 }
 
 uint8_t Arduboy2Base::getPixel(uint8_t x, uint8_t y)
@@ -1048,3 +1045,215 @@ void Arduboy2::clear()
     Arduboy2Base::clear();
     cursor_x = cursor_y = 0;
 }
+
+//---------------------------------------------------------------------------
+void Arduboy2::drawBitmap(int8_t x, int8_t y, const uint8_t *bitmap)
+{
+  int8_t w = pgm_read_byte(bitmap);
+  int8_t h = pgm_read_byte(bitmap + 1);
+
+  bitmap = bitmap + 2;
+
+
+  uint8_t * buffer  = getBuffer();
+  const uint8_t col = textColor;
+  const uint8_t bw  = (w + 7) / 8;
+
+  // clip
+  if (x >= WIDTH)  return;
+  if (y >= HEIGHT) return;
+  if (x + w <= 0)     return;
+  if (y + h <= 0)     return;
+
+  if (y < 0)
+  {
+    h += y;
+    bitmap -= bw * y;
+    y = 0;
+  }
+
+  if (y + h > HEIGHT)
+  {
+    h = HEIGHT - y;
+  }
+
+  uint8_t x1 = max(0, x);
+  uint8_t x2 = min(WIDTH, x + w);
+
+  // draw
+  uint8_t first_bitmap_mask = 0x80 >> ((x1 - x) & 7);
+  const uint8_t * bitmap_line = bitmap + (x1 - x) / 8;
+  uint8_t screen_mask = 0x01 << (y % 8);
+  uint8_t * screen_row = buffer + (y / 8) * WIDTH + x1;
+
+  for (uint8_t dy = 0; dy < h; dy++, bitmap_line += bw)
+  {
+    const uint8_t * bitmap_ptr = bitmap_line;
+    uint8_t bitmap_mask = first_bitmap_mask;
+    uint8_t pixels = pgm_read_byte(bitmap_ptr);
+    uint8_t * dst = screen_row;
+
+    if (col == BLACK)
+    {
+      for (uint8_t sx = x1; sx < x2; sx++, dst++)
+      {
+        if (pixels & bitmap_mask)
+        {
+          *dst |= screen_mask;
+        }
+        bitmap_mask >>= 1;
+
+        if (!bitmap_mask)
+        {
+          bitmap_mask = 0x80;
+          pixels = pgm_read_byte(++bitmap_ptr);
+        }
+      }
+    }
+    else if (col == WHITE)
+    {
+      uint8_t inv_screen_mask = ~screen_mask;
+
+      for (uint8_t sx = x1; sx < x2; sx++, dst++)
+      {
+        if (pixels & bitmap_mask)
+        {
+          *dst &= inv_screen_mask;
+        }
+        bitmap_mask >>= 1;
+
+        if (!bitmap_mask)
+        {
+          bitmap_mask = 0x80;
+          pixels = pgm_read_byte(++bitmap_ptr);
+        }
+      }
+    }
+    else // invert
+    {
+      for (uint8_t sx = x1; sx < x2; sx++, dst++)
+      {
+        if (pixels & bitmap_mask)
+        {
+          *dst ^= screen_mask;
+        }
+        bitmap_mask >>= 1;
+
+        if (!bitmap_mask)
+        {
+          bitmap_mask = 0x80;
+          pixels = pgm_read_byte(++bitmap_ptr);
+        }
+      }
+    }
+
+    screen_mask <<= 1;
+
+    if (!screen_mask)
+    {
+      screen_mask = 1;
+      screen_row += WIDTH;
+    }
+  }
+}
+//---------------------------------------------------------------------------
+boolean Arduboy2::getBitmapPixel(const uint8_t* bitmap, uint8_t x, uint8_t y)
+{
+  return pgm_read_byte(bitmap + 2 + y * ((pgm_read_byte(bitmap) + 7) / 8) + (x >> 3)) & (B10000000 >> (x % 8));
+}
+//---------------------------------------------------------------------------
+void Arduboy2::drawBitmap(int8_t x, int8_t y, const uint8_t *bitmap, uint8_t rotation, uint8_t flip)
+{
+  if ((rotation == NOROT) && (flip == NOFLIP))
+  {
+    // use the faster algorithm
+    drawBitmap(x, y, bitmap);
+    return;
+  }
+
+  uint8_t w = pgm_read_byte(bitmap);
+  uint8_t h = pgm_read_byte(bitmap + 1);
+
+  bitmap = bitmap + 2;
+
+
+  int8_t i, j; //coordinates in the raw bitmap
+  int8_t k, l; //coordinates in the rotated/flipped bitmap
+  int8_t byteNum, bitNum, byteWidth = (w + 7) >> 3;
+
+  rotation %= 4;
+
+  for (i = 0; i < w; i++)
+  {
+    byteNum = i / 8;
+    bitNum  = i % 8;
+
+    for (j = 0; j < h; j++)
+    {
+      if (pgm_read_byte(bitmap + j * byteWidth + byteNum) & (B10000000 >> bitNum))
+      {
+        switch (rotation)
+        {
+          // no rotation
+          case NOROT:
+            k = i;
+            l = j;
+            break;
+
+          // 90 counter-clockwise
+          case ROTCCW:
+            k = j;
+            l = w - i - 1;
+            break;
+
+          // 180
+          case ROT180:
+            k = w - i - 1;
+            l = h - j - 1;
+            break;
+
+          // 90 clockwise
+          case ROTCW:
+            k = h - j - 1;
+            l = i;
+            break;
+        }
+
+        if (flip)
+        {
+          flip %= 4;
+
+          // horizontal flip
+          if (flip & B00000001)
+          {
+            k = w - k - 1;
+          }
+
+          // vertical flip
+          if (flip & B00000010)
+          {
+            l = h - l;
+          }
+        }
+
+        // place the bitmap on the screen
+        k += x;
+        l += y;
+        if (textColor == BLACK){
+          drawPixel(k, l);
+        }
+        else if (textColor == WHITE){
+          drawPixel(k, l, BLACK);
+        }
+      }
+    }
+  }
+}
+//---------------------------------------------------------------------------
+boolean Arduboy2::collideRectRect(uint16_t x1, uint16_t y1, uint16_t w1, uint16_t h1 ,uint16_t x2 ,uint16_t y2, uint16_t w2, uint16_t h2){
+    return !( x2     >=  x1+w1  ||
+              x2+w2  <=  x1     ||
+              y2     >=  y1+h1  ||
+              y2+h2  <=  y1     );
+}
+//---------------------------------------------------------------------------

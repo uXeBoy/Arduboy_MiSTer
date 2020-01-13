@@ -210,7 +210,7 @@ void Arduboy2Core::boot()
 void Arduboy2Core::bootPins()
 {
   *simple_out &= ~(FULLNOTE_MASK | DATA_MASK | ADDRESS_MASK |
-                   SD_WR_MASK | SD_RD_MASK); // mute, sd_wr + sd_rd LOW
+                   SD_WR_MASK | SD_RD_MASK | GLUE_WR_MASK); // mute, sd_wr + sd_rd LOW
   *simple_out |=   LATCH_MASK | LBA_MASK;  // latch HIGH
   *simple_out &= ~(LATCH_MASK | LBA_MASK); // latch LOW
 
@@ -269,11 +269,32 @@ void Arduboy2Core::writeEEPROM(uint16_t address, uint8_t value)
 void Arduboy2Core::writeEEPROM(uint16_t address, void *data_source, size_t size)
 {
   uint8_t value;
+  bool changed = false;
+
+  *simple_out &= ~(SD_WR_MASK | SD_RD_MASK); // sd_wr + sd_rd LOW
 
   for(size_t i = 0; i < size; i++)
   {
+    *simple_out &= ~(ADDRESS_MASK); // reset address to zero
+    *simple_out |= (ADDRESS_MASK & (address + i)); // set address
+
     value = ((uint8_t *)data_source)[i];
-    writeEEPROM((uint16_t) address + i, value);
+
+    while (value != (*simple_in & 0xFF))
+    {
+      *simple_out &= ~(DATA_MASK); // reset data to zero
+      *simple_out |= (DATA_MASK & (value << 12)); // set data
+
+      *simple_out |= GLUE_WR_MASK; // glue_wr HIGH
+      changed = true;
+      *simple_out &= ~(GLUE_WR_MASK); // glue_wr LOW
+    }
+  }
+
+  if (changed)
+  {
+    while (*simple_in & SD_ACK_MASK) { } // wait if busy
+    *simple_out |= SD_WR_MASK; // sd_wr HIGH
   }
 }
 

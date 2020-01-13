@@ -156,7 +156,7 @@ wire lba;
 reg [8:0] sd_lba;
 always @(posedge clk_100m) if (lba) sd_lba <= address;
 wire [8:0] busy_lba;
-assign busy_lba = (busy) ? lba_count : sd_lba;
+assign busy_lba = (busy) ? lba_count : 9'd0;
 
 hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 (
@@ -264,17 +264,20 @@ reg [17:0] char_count;
 
 always @(posedge clk_100m)
 begin
-  if (status[0] || RESET) begin
+  if (status[0]) begin
     lba_count <= 0;
   end
   else if (busy) begin
-    if (risingSD_RD) lba_count <= lba_count + 1'b1;
+    if (buffer_dout == 8'h1A) begin // End of File
+      lba_count <= 0;
+    end
+    else if (risingSD_RD) lba_count <= lba_count + 1'b1;
   end
 end
 
 always @(posedge clk_25m)
 begin
-  if (status[0] || RESET) begin
+  if (status[0]) begin
     busy <= 1'b1;
     dvalid <= 1'b0;
     char_count <= 502;
@@ -283,6 +286,7 @@ begin
     if (buffer_dout == 8'h1A) begin // End of File
       busy <= 1'b0;
       dvalid <= 1'b0;
+      char_count <= 511;
     end
     else if (tx_rd && !dvalid) begin
       if (char_count < 512) tx_data_r <= char_count - 454; // ASCII 0-9

@@ -82,6 +82,19 @@
 
 #define CLEAR_BUFFER true /**< Value to be passed to `display()` to clear the screen buffer. */
 
+// Gamebuino LCD size
+#define LCDWIDTH            84
+#define LCDHEIGHT           48
+
+// for Gamebuino extended bitmap function
+#define NOROT               0
+#define ROTCCW              1
+#define ROT180              2
+#define ROTCW               3
+#define NOFLIP              0
+#define FLIPH               1
+#define FLIPV               2
+#define FLIPVH              3
 
 //=============================================
 //========== Rect (rectangle) object ==========
@@ -995,7 +1008,7 @@ class Arduboy2Base : public Arduboy2Core
    *
    * \see nextFrame() everyXFrames()
    */
-  uint16_t frameCount;
+  uint32_t frameCount;
 
   /** \brief
    * The display buffer array in RAM.
@@ -1317,9 +1330,15 @@ class Arduboy2 : public Print, public Arduboy2Base
    */
   void clear();
 
- protected:
+  void     drawBitmap(int8_t x, int8_t y, const uint8_t *bitmap);
+  void     drawBitmap(int8_t x, int8_t y, const uint8_t *bitmap, uint8_t rotation, uint8_t flip);
+  boolean  getBitmapPixel(const uint8_t* bitmap, uint8_t x, uint8_t y);
+  boolean  collideRectRect(uint16_t x1, uint16_t y1, uint16_t w1, uint16_t h1 ,uint16_t x2 ,uint16_t y2, uint16_t w2, uint16_t h2);
+
   int16_t cursor_x;
   int16_t cursor_y;
+
+ protected:
   uint8_t textColor;
   uint8_t textBackground;
   uint8_t textSize;
