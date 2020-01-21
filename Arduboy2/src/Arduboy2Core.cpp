@@ -134,7 +134,7 @@ void Arduboy2Core::tone2(const uint16_t *tones, int8_t vol)
   uint16_t freq;
 
   volumeSlide = vol;
-  if (volumeSlide == 1) volume = 8;
+  if (volumeSlide == 1) volume = 8; // start already shifted-right by 8 bits
   else volume = 0;
 
   tonesStart2 = tonesIndex2 = (uint16_t *)tones; // set to start of sequence array
@@ -159,16 +159,16 @@ void Arduboy2Core::timer2()
 
   if (volumeSlide != 0)
   {
-    if (volumeSlide == -1 && volume < 8)
+    if (volumeSlide == -1 && volume < 8) // volume-down / shift-right
     {
-      volume = volume + (oneBitCounter ^= 1);
+      volume = volume + (oneBitCounter ^= 1); // +1 every two frames
       *simple_out &= ~(ADDRESS_MASK); // reset data to zero
       *simple_out |=  (ADDRESS_MASK & volume) | VOL_MASK; // set data + latch
       *simple_out &= ~(VOL_MASK); // latch LOW
     }
-    else if (volumeSlide == 1 && volume > 0)
+    else if (volumeSlide == 1 && volume > 0) // volume-up / shift-left
     {
-      volume = volume - 1;
+      volume = volume - 1; // -1 every frame
       *simple_out &= ~(ADDRESS_MASK); // reset data to zero
       *simple_out |=  (ADDRESS_MASK & volume) | VOL_MASK; // set data + latch
       *simple_out &= ~(VOL_MASK); // latch LOW
