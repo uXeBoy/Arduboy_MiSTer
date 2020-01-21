@@ -54,7 +54,7 @@
 #define LATCH_MASK     0x00100000
 #define DATA_MASK      0x000FF000
 #define SD_RD_MASK     0x00000400
-#define LBA_MASK       0x00000200
+#define VOL_MASK       0x00000200
 #define ADDRESS_MASK   0x000001FF
 
 #define NOTE_REST  0
@@ -371,6 +371,9 @@ class Arduboy2Core
     static uint16_t duration;
     static bool tonesPlaying;
     static uint16_t toneSequence[];
+    static int8_t volumeSlide;
+    static uint8_t volume;
+    static uint8_t oneBitCounter;
     static uint16_t duration2;
     static bool tonesPlaying2;
     static uint16_t toneSequence2[];
@@ -400,7 +403,7 @@ class Arduboy2Core
     static void tone(const uint16_t *tones);
     static void tone(int freq1, int dur1, int freq2, int dur2, int freq3, int dur3);
     static void tone2(const uint16_t freq, const uint16_t dur);
-    static void tone2(const uint16_t *tones);
+    static void tone2(const uint16_t *tones, int8_t vol = 0);
 
     /** \brief
      * Handle the duration that a tone plays for.

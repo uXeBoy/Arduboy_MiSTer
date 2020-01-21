@@ -111,6 +111,9 @@ void Arduboy2Core::noTone()
   tonesPlaying = false;
 }
 
+int8_t Arduboy2Core::volumeSlide = 0;
+uint8_t Arduboy2Core::volume = 0;
+uint8_t Arduboy2Core::oneBitCounter = 1;
 uint16_t Arduboy2Core::duration2 = 0;
 bool Arduboy2Core::tonesPlaying2 = false;
 uint16_t Arduboy2Core::toneSequence2[3];
@@ -126,9 +129,13 @@ void Arduboy2Core::tone2(const uint16_t freq, const uint16_t dur)
   tone2(toneSequence2);
 }
 
-void Arduboy2Core::tone2(const uint16_t *tones)
+void Arduboy2Core::tone2(const uint16_t *tones, int8_t vol)
 {
   uint16_t freq;
+
+  volumeSlide = vol;
+  if (volumeSlide == 1) volume = 8;
+  else volume = 0;
 
   tonesStart2 = tonesIndex2 = (uint16_t *)tones; // set to start of sequence array
 
@@ -137,16 +144,36 @@ void Arduboy2Core::tone2(const uint16_t *tones)
   duration2 = *tonesIndex2++ / eachFrameMillis; // get tone duration2
   if (duration2 == 0) duration2 = 1;
 
-  *simple_out &= ~(DATA_MASK); // reset data to zero
-  *simple_out |=  (DATA_MASK & (freq << 12)) | LATCH_MASK; // set data + latch
-  *simple_out &= ~(LATCH_MASK); // latch LOW
+  *simple_out &= ~(DATA_MASK | ADDRESS_MASK); // reset data to zero
+  *simple_out |=  (DATA_MASK & (freq << 12)) | LATCH_MASK |  // set data + latch
+                  (ADDRESS_MASK & volume) | VOL_MASK;
+  *simple_out &= ~(LATCH_MASK | VOL_MASK); // latch LOW
 
   tonesPlaying2 = true;
+  oneBitCounter = 1;
 }
 
 void Arduboy2Core::timer2()
 {
   uint16_t freq;
+
+  if (volumeSlide != 0)
+  {
+    if (volumeSlide == -1 && volume < 8)
+    {
+      volume = volume + (oneBitCounter ^= 1);
+      *simple_out &= ~(ADDRESS_MASK); // reset data to zero
+      *simple_out |=  (ADDRESS_MASK & volume) | VOL_MASK; // set data + latch
+      *simple_out &= ~(VOL_MASK); // latch LOW
+    }
+    else if (volumeSlide == 1 && volume > 0)
+    {
+      volume = volume - 1;
+      *simple_out &= ~(ADDRESS_MASK); // reset data to zero
+      *simple_out |=  (ADDRESS_MASK & volume) | VOL_MASK; // set data + latch
+      *simple_out &= ~(VOL_MASK); // latch LOW
+    }
+  }
 
   if (duration2 == 0)
   {
@@ -211,8 +238,8 @@ void Arduboy2Core::bootPins()
 {
   *simple_out &= ~(FULLNOTE_MASK | DATA_MASK | ADDRESS_MASK |
                    SD_WR_MASK | SD_RD_MASK | GLUE_WR_MASK); // mute, sd_wr + sd_rd LOW
-  *simple_out |=   LATCH_MASK | LBA_MASK;  // latch HIGH
-  *simple_out &= ~(LATCH_MASK | LBA_MASK); // latch LOW
+  *simple_out |=   LATCH_MASK | VOL_MASK;  // latch HIGH
+  *simple_out &= ~(LATCH_MASK | VOL_MASK); // latch LOW
 
   pinMode(LED_BUILTIN, OUTPUT); // setup LED_USER
 

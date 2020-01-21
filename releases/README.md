@@ -12,7 +12,7 @@ and 'Rooftop Rescue' by Bert Veer:
 
 https://github.com/BertVeer/Rooftop [(LICENSE)](https://github.com/BertVeer/Rooftop/blob/master/LICENSE)
 
-and 'Super Crate Buino' by Aurélien Rodot **(unfinished Gamebuino port, still need to work on sound)**:
+and 'Super Crate Buino' by Aurélien Rodot:
 
 https://github.com/Rodot/Super-Crate-Buino [(LICENSE)](https://www.gnu.org/licenses/lgpl-3.0.en.html)
 

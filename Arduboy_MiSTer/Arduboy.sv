@@ -132,12 +132,16 @@ assign USER_OUT  = 0;
 assign AUDIO_S   = 0;
 assign AUDIO_MIX = 3;
 assign AUDIO_L   = (audio1 && !busy) ? 16'h7FFF : 16'd0;
-assign AUDIO_R   = (audio2 && !busy) ? 16'h7FFF : 16'd0;
+assign AUDIO_R   = (audio2 && !busy) ? (16'h7FFF >> volume) : 16'd0;
 assign ADC_BUS   = 'Z;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_RD, DDRAM_DIN, DDRAM_BE, DDRAM_WE} = 0;
 assign {SDRAM_CLK, SDRAM_CKE, SDRAM_A, SDRAM_BA, SDRAM_DQ, SDRAM_DQML, SDRAM_DQMH, SDRAM_nCS, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nWE} = 'Z;
 assign {UART_RTS, UART_DTR} = 0;
+
+wire volume_latch;
+reg [3:0] volume;
+always @(posedge clk_100m) if (volume_latch) volume <= address[3:0];
 
 `include "build_id.v"
 localparam CONF_STR =
@@ -152,9 +156,6 @@ localparam CONF_STR =
 wire [31:0] joystick;
 wire [31:0] status;
 
-wire lba;
-reg [8:0] sd_lba;
-always @(posedge clk_100m) if (lba) sd_lba <= address;
 wire [8:0] busy_lba;
 assign busy_lba = (busy) ? lba_count : 9'd0;
 
@@ -326,7 +327,7 @@ glue glue
     .buttons(joystick[5:0]),
     .audio1(audio1),
     .audio2(audio2),
-    .lba(lba),
+    .volume(volume_latch),
     .sync(sync),
     .sd_rd(glue_rd_in),
     .sd_wr(sd_wr_in),

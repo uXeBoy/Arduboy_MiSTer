@@ -57,7 +57,7 @@ entity glue is
     buttons:     in std_logic_vector(5 downto 0);
     audio1:     out std_logic;
     audio2:     out std_logic;
-    lba:        out std_logic;
+    volume:     out std_logic;
     sync:        in std_logic;
     sd_rd:      out std_logic;
     sd_wr:      out std_logic;
@@ -179,7 +179,7 @@ begin
     simple_out(21) => invert, simple_out(20) => latch,
     simple_out(19 downto 12) => data,
     simple_out(11) => led, -- PIN_Y15 LED_USER (GPIO_1[0])
-    simple_out(10) => sd_rd, simple_out(9) => lba,
+    simple_out(10) => sd_rd, simple_out(9) => volume,
     simple_out(8 downto 0) => address
     );
 
