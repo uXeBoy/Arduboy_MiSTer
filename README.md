@@ -1,15 +1,17 @@
 # Arduboy_MiSTer
 
-Finally found a DE10-Nano locally for a reasonable price, and have managed to find the time to get the beginnings of an 'Arduboy core' running on it!
+Arduboy core for MiSTer, ported by Dan O'Shea and now based on Iulian Gheorghiu's atmega core:
 
-So, with a bit more development time / effort we could bring Arduboy games to FPGA gaming platforms like the MiSTer, the upcoming 'Analogue Pocket', or even the new GameBoy-shaped Hackaday Supercon Badge!
+https://github.com/MorgothCreator/atmega-xmega-soft-core
 
-https://github.com/MiSTer-devel/Main_MiSTer/wiki <br />
-https://www.analogue.co/pocket/ <br />
-https://hackaday.com/2019/11/04/gigantic-fpga-in-a-game-boy-form-factor-2019-supercon-badge-is-a-hardware-siren-song/
+A collection of .bin files converted and tested so far can be found here (you can hit the green 'Clone or download' button, and then 'Download ZIP' to get them all at once):
 
-This is using a modified version of the Arduboy2 library, with the code running on a 'soft' RISC-V microcontroller implemented within the FPGA, and outputting video through the MiSTer's HDMI port... I have bodged menloparkinnovation's DE10-Nano fork of the FPGArduino project together with an example I found for using the HDMI output:
+https://github.com/uXeBoy/ArduboyCollection
 
-http://www.nxlab.fer.hr/fpgarduino/ <br />
-https://github.com/menloparkinnovation/f32c <br />
-https://github.com/nhasbun/de10nano_vgaHdmi_chip
+Arduboy .hex files first need to be converted to .bin using hex2bin (and be sure to use the command line option `-l 8000` to pad the files out to 32K):
+
+https://sourceforge.net/projects/hex2bin/
+
+Enjoy!
+
+TODO: work on more complete sound support, look at making EEPROM non-volatile
