@@ -1,6 +1,6 @@
 # Arduboy_MiSTer
 
-Arduboy core for MiSTer, ported by Dan O'Shea and now based on Iulian Gheorghiu's atmega core:
+Arduboy core for MiSTer, ported by Dan O'Shea and based on Iulian Gheorghiu's atmega core:
 
 https://github.com/MorgothCreator/atmega-xmega-soft-core
 
@@ -12,6 +12,4 @@ Arduboy .hex files first need to be converted to .bin using hex2bin (and be sure
 
 https://sourceforge.net/projects/hex2bin/
 
-Enjoy!
-
-TODO: work on more complete sound support, look at making EEPROM non-volatile
+TODO: work on more complete sound support, look at making EEPROM non-volatile, improve stability (some games will randomly reset, or not run at all), pull requests / improvements welcome!
