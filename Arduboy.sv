@@ -42,7 +42,7 @@ module emu
     output  [7:0] VGA_B,
     output        VGA_HS,
     output        VGA_VS,
-    output        VGA_DE,    // = ~(VBlank | HBlank)
+    output        VGA_DE, // = ~(VBlank | HBlank)
     output        VGA_F1,
 
     //Base video clock. Usually equals to CLK_SYS.
@@ -57,14 +57,14 @@ module emu
     output  [7:0] HDMI_B,
     output        HDMI_HS,
     output        HDMI_VS,
-    output        HDMI_DE,   // = ~(VBlank | HBlank)
-    output  [1:0] HDMI_SL,   // scanlines fx
+    output        HDMI_DE, // = ~(VBlank | HBlank)
+    output  [1:0] HDMI_SL, // scanlines fx
 
     //Video aspect ratio for HDMI. Most retro systems have ratio 4:3.
     output  [7:0] HDMI_ARX,
     output  [7:0] HDMI_ARY,
 
-    output        LED_USER,  // 1 - ON, 0 - OFF.
+    output        LED_USER, // 1 - ON, 0 - OFF.
 
     // b[1]: 0 - LED status is system status OR'd with b[0]
     //       1 - LED status is controled solely by b[0]
